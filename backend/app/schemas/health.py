@@ -6,3 +6,4 @@ class HealthResponse(BaseModel):
     service: str = Field(default="nexus-api", description="Service identifier")
     version: str = Field(default="0.1.0", description="API version")
     environment: str = Field(default="development", description="Runtime environment")
+

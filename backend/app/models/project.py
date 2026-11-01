@@ -84,3 +84,4 @@ class Project(Base):
             ondelete="SET NULL (lead_id)",
         ),
     )
+

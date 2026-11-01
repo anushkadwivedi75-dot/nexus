@@ -41,3 +41,4 @@ class Workspace(Base):
             name="chk_workspaces_slug_format",
         ),
     )
+

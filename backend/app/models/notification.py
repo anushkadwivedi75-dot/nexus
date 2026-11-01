@@ -65,3 +65,4 @@ class Notification(Base):
             created_at.desc(),
         ),
     )
+

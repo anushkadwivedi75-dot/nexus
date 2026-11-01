@@ -27,3 +27,4 @@ class TaskAssignee(Base):
             ondelete="CASCADE",
         ),
     )
+

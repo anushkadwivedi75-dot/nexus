@@ -62,3 +62,4 @@ class ActivityLog(Base):
         ),
         Index("idx_activity_workspace", "workspace_id", created_at.desc()),
     )
+

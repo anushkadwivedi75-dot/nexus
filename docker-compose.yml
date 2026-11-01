@@ -41,3 +41,4 @@ volumes:
     driver: local
   redisdata:
     driver: local
+

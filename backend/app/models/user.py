@@ -35,3 +35,4 @@ class User(Base):
     __table_args__ = (
         Index("uq_users_email_lower", func.lower(email), unique=True),
     )
+

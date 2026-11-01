@@ -68,3 +68,4 @@ class WorkspaceInvitation(Base):
             postgresql_where=text("status = 'pending'"),
         ),
     )
+

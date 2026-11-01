@@ -39,3 +39,4 @@ class RefreshToken(Base):
         Index("idx_refresh_tokens_family", family_id),
         Index("idx_refresh_tokens_user", user_id),
     )
+

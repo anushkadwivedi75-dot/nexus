@@ -37,3 +37,4 @@ class Tag(Base):
         UniqueConstraint("workspace_id", "name", name="uq_tags_workspace_name"),
         CheckConstraint("color_hex ~ '^#[0-9A-Fa-f]{6}$'", name="chk_tags_color_hex"),
     )
+

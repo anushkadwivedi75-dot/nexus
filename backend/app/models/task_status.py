@@ -60,3 +60,4 @@ class TaskStatus(Base):
         ),
         Index("idx_statuses_rank", "project_id", "rank"),
     )
+

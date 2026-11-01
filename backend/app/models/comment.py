@@ -58,3 +58,4 @@ class Comment(Base):
             postgresql_where=text("deleted_at IS NULL"),
         ),
     )
+

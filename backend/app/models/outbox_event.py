@@ -91,3 +91,4 @@ class OutboxEvent(Base):
             created_at.desc(),
         ),
     )
+

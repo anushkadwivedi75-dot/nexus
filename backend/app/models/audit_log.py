@@ -50,3 +50,4 @@ class AuditLog(Base):
         Index("idx_audit_actor_date", "actor_id", created_at.desc()),
         Index("idx_audit_event_date", "event_name", created_at.desc()),
     )
+

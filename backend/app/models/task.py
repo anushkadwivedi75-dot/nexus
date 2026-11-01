@@ -100,3 +100,4 @@ class Task(Base):
             postgresql_using="gin",
         ),
     )
+

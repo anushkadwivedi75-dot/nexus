@@ -27,3 +27,4 @@ class TaskTag(Base):
             ondelete="CASCADE",
         ),
     )
+

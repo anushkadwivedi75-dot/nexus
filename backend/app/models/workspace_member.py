@@ -51,3 +51,4 @@ class WorkspaceMember(Base):
         ),
         Index("idx_workspace_members_user", "user_id"),
     )
+
