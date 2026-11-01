@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Nexus Dark-First Palette: Background #0B0F17, Accent #8B5CF6, Border #1E293B */
+    --background: 220 35% 6.7%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 37% 9.5%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 221 39% 12.5%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 258 90% 66%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 217 33% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17.5%;
+    --muted-foreground: 215 16% 65%;
+
+    --accent: 222 40% 14.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17.5%;
+    --input: 217 33% 17.5%;
+    --ring: 258 90% 66%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar-specific tokens */
+    --sidebar-background: 222 39% 5.8%;
+    --sidebar-foreground: 214 32% 91%;
+    --sidebar-primary: 258 90% 66%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 40% 13.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 221 35% 14%;
+    --sidebar-ring: 258 90% 66%;
+
+    /* Status semantics */
+    --status-success: 160 84% 39%;
+    --status-warning: 38 92% 50%;
+    --status-info: 217 91% 60%;
+  }
+
+  /* Force dark mode as the default for Nexus */
+  body {
+    @apply bg-background text-foreground antialiased selection:bg-primary/20 selection:text-primary font-sans;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+}
+
+/* Custom crisp dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.8);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Focus outline helpers */
+.focus-ring {
+  @apply focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background;
+}

@@ -1,0 +1,161 @@
+import { UserProfile, Workspace, ProjectPreview, ActivityItem, StatCard } from "@/types"
+
+export const currentUser: UserProfile = {
+  id: "user-1",
+  name: "Alex Vance",
+  email: "alex.vance@nexus.io",
+  role: "Principal Architect",
+}
+
+export const mockWorkspaces: Workspace[] = [
+  {
+    id: "ws-1",
+    name: "Nexus Labs",
+    slug: "nexus-labs",
+    plan: "Enterprise",
+    role: "owner",
+    membersCount: 18,
+    colorHex: "#8B5CF6",
+    initials: "NL",
+  },
+  {
+    id: "ws-2",
+    name: "Acme Engineering",
+    slug: "acme-eng",
+    plan: "Pro",
+    role: "admin",
+    membersCount: 42,
+    colorHex: "#3B82F6",
+    initials: "AE",
+  },
+  {
+    id: "ws-3",
+    name: "Hyperion Ventures",
+    slug: "hyperion",
+    plan: "Starter",
+    role: "member",
+    membersCount: 9,
+    colorHex: "#10B981",
+    initials: "HV",
+  },
+]
+
+export const mockProjects: ProjectPreview[] = [
+  {
+    id: "prj-1",
+    key: "CORE",
+    name: "Real-Time Outbox Engine",
+    description: "Distributed SKIP LOCKED worker and Redis Pub/Sub integration with fencing tokens.",
+    leadName: "Alex Vance",
+    status: "active",
+    tasksTotal: 48,
+    tasksCompleted: 36,
+    colorHex: "#8B5CF6",
+    updatedAt: "12m ago",
+  },
+  {
+    id: "prj-2",
+    key: "UI",
+    name: "Design System & Dark-First Shell",
+    description: "Linear-inspired typography, compact navigation shell, and core shadcn primitives.",
+    leadName: "Elena Rostova",
+    status: "active",
+    tasksTotal: 32,
+    tasksCompleted: 28,
+    colorHex: "#EC4899",
+    updatedAt: "45m ago",
+  },
+  {
+    id: "prj-3",
+    key: "AUTH",
+    name: "Session Security & Rotation",
+    description: "Dual-store commit-first refresh tokens with 15s AES-256-GCM grace recovery stash.",
+    leadName: "Marcus Brody",
+    status: "completed",
+    tasksTotal: 24,
+    tasksCompleted: 24,
+    colorHex: "#10B981",
+    updatedAt: "2h ago",
+  },
+  {
+    id: "prj-4",
+    key: "MOB",
+    name: "Mobile Responsive Drawer & Views",
+    description: "Viewport layout adaptation and touch ergonomics across tablet and mobile devices.",
+    leadName: "Sarah Chen",
+    status: "planning",
+    tasksTotal: 18,
+    tasksCompleted: 3,
+    colorHex: "#F59E0B",
+    updatedAt: "1d ago",
+  },
+]
+
+export const mockStats: StatCard[] = [
+  {
+    label: "Sprint Velocity",
+    value: "84.2%",
+    change: "+12.4%",
+    isPositive: true,
+    description: "vs. previous sprint cycle",
+  },
+  {
+    label: "Active Tasks",
+    value: "38",
+    change: "-5",
+    isPositive: true,
+    description: "in progress across 4 projects",
+  },
+  {
+    label: "Completed (7d)",
+    value: "61",
+    change: "+18",
+    isPositive: true,
+    description: "closed tickets this week",
+  },
+  {
+    label: "Cycle Time",
+    value: "1.8d",
+    change: "-0.4d",
+    isPositive: true,
+    description: "average PR to deploy latency",
+  },
+]
+
+export const mockActivities: ActivityItem[] = [
+  {
+    id: "act-1",
+    actorName: "Sarah Chen",
+    action: "moved task to In Review",
+    targetTitle: "Deterministic two-column lock ordering",
+    targetKey: "CORE-104",
+    timestamp: "14m ago",
+    type: "task",
+  },
+  {
+    id: "act-2",
+    actorName: "Marcus Brody",
+    action: "closed completed milestone",
+    targetTitle: "Phase 0 Architecture Verification",
+    targetKey: "AUTH-89",
+    timestamp: "42m ago",
+    type: "project",
+  },
+  {
+    id: "act-3",
+    actorName: "Elena Rostova",
+    action: "added design feedback",
+    targetTitle: "Collapsible sidebar icon alignment",
+    targetKey: "UI-15",
+    timestamp: "2h ago",
+    type: "comment",
+  },
+  {
+    id: "act-4",
+    actorName: "Alex Vance",
+    action: "verified ownership transfer",
+    targetTitle: "Nexus Labs workspace invariant",
+    timestamp: "4h ago",
+    type: "member",
+  },
+]
