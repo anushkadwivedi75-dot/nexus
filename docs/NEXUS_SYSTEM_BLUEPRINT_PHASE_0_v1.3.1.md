@@ -10,7 +10,8 @@
 ## 1. EXECUTIVE SUMMARY AND ARCHITECTURE DECISIONS
 
 ### 1.1 Executive Summary
-**Nexus** is a production-grade, multi-tenant, real-time team collaboration and project management SaaS platform. Drawing functional and aesthetic inspiration from **Linear** (keyboard-first speed, density, and refined micro-interactions), **Notion** (flexible workspace hierarchy and structured documents), and **ClickUp** (robust task workflows and workload tracking), Nexus delivers a cohesive, dark-first collaborative workspace designed for modern product engineering teams and solo founders.
+**Nexus** is a production-grade, multi-tenant, real-time team collaboration and project management SaaS platform. Drawing functional and aesthetic inspiration from **Linear** (keyboard-first speed, density, and refined micro-interactions), *
+*Notion** (flexible workspace hierarchy and structured documents), and **ClickUp** (robust task workflows and workload tracking), Nexus delivers a cohesive, dark-first collaborative workspace designed for modern product engineering teams and solo founders.
 
 This document—Version 1.3.1—implements targeted corrections to the architecture specification. It explicitly defines the boundaries between relational-engine and hybrid application multi-tenant isolation, enforces the workspace ownership invariant at the database level via a partial unique index, introduces distributed fencing tokens (`claim_epoch`) to the transactional outbox, formalizes token grace-chain traversal under Redis outages, specifies immediate access-token invalidation via Redis revocation epochs, eliminates Kanban cross-column locking deadlocks via deterministic `id ASC` mutex ordering, consolidates rebalance events into single atomic payloads, and formalizes deployment database roles.
 
