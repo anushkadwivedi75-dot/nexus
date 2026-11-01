@@ -1,4 +1,4 @@
-import { UserProfile, Workspace, ProjectPreview, ActivityItem, StatCard } from "@/types"
+import type { UserProfile, Workspace, ProjectPreview, ActivityItem, StatCard } from "@/types"
 
 export const currentUser: UserProfile = {
   id: "user-1",

@@ -7,7 +7,6 @@ import {
   Users,
   Settings,
   Inbox,
-  Activity,
   Plus,
   Moon,
   Sparkles,

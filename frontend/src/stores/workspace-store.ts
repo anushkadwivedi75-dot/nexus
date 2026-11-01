@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { Workspace } from "@/types"
+import type { Workspace } from "@/types"
 import { mockWorkspaces } from "@/data/mock-data"
 
 interface WorkspaceState {

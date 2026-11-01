@@ -234,3 +234,4 @@ export function WorkspaceSwitcher({ isCollapsed = false }: { isCollapsed?: boole
     </>
   )
 }
+
