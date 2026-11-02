@@ -28,6 +28,8 @@ class RefreshToken(Base):
         ForeignKey("refresh_tokens.id", ondelete="SET NULL"),
         nullable=True,
     )
+    ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -39,4 +41,3 @@ class RefreshToken(Base):
         Index("idx_refresh_tokens_family", family_id),
         Index("idx_refresh_tokens_user", user_id),
     )
-

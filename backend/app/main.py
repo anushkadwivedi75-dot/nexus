@@ -4,13 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.api import api_router
 from app.core.config import settings
 from app.core.database import engine
+from app.core.redis import close_redis
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: ensure async DB engine connection pool can be initialized
+    # Startup
     yield
-    # Shutdown: dispose of database engine connection pool
+    # Shutdown
+    await close_redis()
     await engine.dispose()
 
 
@@ -46,4 +48,3 @@ async def root():
         "docs": f"{settings.API_V1_STR}/docs",
         "health": f"{settings.API_V1_STR}/health",
     }
-
