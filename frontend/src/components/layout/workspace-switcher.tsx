@@ -24,20 +24,35 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { cn } from "@/lib/utils"
 
 export function WorkspaceSwitcher({ isCollapsed = false }: { isCollapsed?: boolean }) {
-  const { workspaces, currentWorkspace, setWorkspace, addMockWorkspace } =
+  const { workspaces, currentWorkspace, setWorkspace, createWorkspace, fetchWorkspaces } =
     useWorkspaceStore()
   const [isCreateOpen, setIsCreateOpen] = React.useState(false)
   const [newWsName, setNewWsName] = React.useState("")
   const [newWsSlug, setNewWsSlug] = React.useState("")
+  const [createError, setCreateError] = React.useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    fetchWorkspaces()
+  }, [fetchWorkspaces])
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newWsName.trim()) return
-    const slug = newWsSlug.trim() || newWsName.toLowerCase().replace(/\s+/g, "-")
-    addMockWorkspace(newWsName.trim(), slug)
-    setNewWsName("")
-    setNewWsSlug("")
-    setIsCreateOpen(false)
+    const slug = (newWsSlug.trim() || newWsName.toLowerCase().replace(/\s+/g, "-")).replace(/[^a-z0-9-]/g, "")
+    
+    setIsSubmitting(true)
+    setCreateError(null)
+    try {
+      await createWorkspace(newWsName.trim(), slug)
+      setNewWsName("")
+      setNewWsSlug("")
+      setIsCreateOpen(false)
+    } catch (err: any) {
+      setCreateError(err.data?.detail || err.message || "Failed to create workspace.")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   // Trigger Button
@@ -178,6 +193,11 @@ export function WorkspaceSwitcher({ isCollapsed = false }: { isCollapsed?: boole
           </DialogHeader>
 
           <form onSubmit={handleCreateSubmit} className="space-y-4 py-2">
+            {createError && (
+              <div className="p-2.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs">
+                {createError}
+              </div>
+            )}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-foreground">Workspace Name</label>
               <Input
@@ -224,8 +244,8 @@ export function WorkspaceSwitcher({ isCollapsed = false }: { isCollapsed?: boole
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" disabled={!newWsName.trim()}>
-                Create Workspace
+              <Button type="submit" size="sm" disabled={!newWsName.trim() || isSubmitting}>
+                {isSubmitting ? "Creating..." : "Create Workspace"}
               </Button>
             </DialogFooter>
           </form>

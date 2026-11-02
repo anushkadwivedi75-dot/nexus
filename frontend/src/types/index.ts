@@ -24,11 +24,43 @@ export interface Workspace {
   id: string
   name: string
   slug: string
-  plan: 'Starter' | 'Pro' | 'Enterprise'
+  plan?: 'Starter' | 'Pro' | 'Enterprise'
   role: 'owner' | 'admin' | 'member'
-  membersCount: number
-  colorHex: string
-  initials: string
+  membersCount?: number
+  members_count?: number
+  colorHex?: string
+  initials?: string
+  owner_id?: string
+  logo_url?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
+export interface WorkspaceMemberItem {
+  id: string
+  workspace_id: string
+  user_id: string
+  role: 'owner' | 'admin' | 'member'
+  joined_at: string
+  user: {
+    id: string
+    email: string
+    full_name: string
+    avatar_url?: string | null
+  }
+}
+
+export interface WorkspaceInvitationItem {
+  id: string
+  workspace_id: string
+  email: string
+  role: 'admin' | 'member'
+  status: 'pending' | 'accepted' | 'revoked' | 'expired'
+  invited_by?: string | null
+  expires_at: string
+  created_at: string
+  raw_token?: string
+  invite_url?: string
 }
 
 export interface ProjectPreview {
