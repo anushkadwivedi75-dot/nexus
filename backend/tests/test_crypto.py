@@ -34,3 +34,4 @@ def test_corrupted_ciphertext_fails():
     family_id = str(uuid.uuid4())
     user_id = str(uuid.uuid4())
     assert crypto_service.decrypt_token("invalid_base64_payload!", family_id, user_id) is None
+

@@ -29,7 +29,7 @@ async def test_access_token_invalid_signature():
     email = "test@example.com"
     token = jwt.encode(
         {"sub": user_id, "email": email, "exp": int(time.time()) + 900, "iat": int(time.time()), "iss": "nexus-api", "aud": "nexus-web"},
-        "wrong_signing_key_12345",
+        "wrong_signing_key_at_least_32_bytes_long_12345",
         algorithm="HS256",
     )
     payload = await token_service.verify_access_token(token)

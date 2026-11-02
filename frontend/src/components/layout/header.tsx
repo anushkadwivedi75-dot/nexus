@@ -7,6 +7,7 @@ import {
   Plus,
 } from "lucide-react"
 import { useWorkspaceStore } from "@/stores/workspace-store"
+import { useAuthStore } from "@/stores/auth-store"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -35,6 +36,16 @@ export function Header() {
   const location = useLocation()
   const { currentWorkspace, setCommandPaletteOpen, setMobileSidebarOpen } =
     useWorkspaceStore()
+  const { user, logout } = useAuthStore()
+
+  const displayName = user?.full_name || user?.name || currentUser.name || "User"
+  const displayEmail = user?.email || currentUser.email || ""
+  const initials = (displayName || "User")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .substring(0, 2) || "NX"
 
   const currentRoute = pageTitles[location.pathname] || {
     title: "Overview",
@@ -133,7 +144,7 @@ export function Header() {
             <button className="flex h-7 w-7 items-center justify-center rounded-full hover:ring-1 hover:ring-primary focus-visible:outline-none">
               <Avatar className="h-7 w-7">
                 <AvatarFallback className="bg-primary/20 text-primary text-[10px] font-bold">
-                  AV
+                  {initials}
                 </AvatarFallback>
               </Avatar>
             </button>
@@ -142,8 +153,8 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-52 p-1.5">
             <DropdownMenuLabel className="px-2 py-1.5">
               <div className="flex flex-col">
-                <span className="text-xs font-semibold text-foreground">{currentUser.name}</span>
-                <span className="text-[10px] text-muted-foreground">{currentUser.email}</span>
+                <span className="text-xs font-semibold text-foreground">{displayName}</span>
+                <span className="text-[10px] text-muted-foreground">{displayEmail}</span>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -153,8 +164,11 @@ export function Header() {
               <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">Dark-First</Badge>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-xs text-destructive focus:text-destructive">
-              Log out (Mock)
+            <DropdownMenuItem
+              onClick={() => logout()}
+              className="text-xs text-destructive focus:text-destructive cursor-pointer"
+            >
+              Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

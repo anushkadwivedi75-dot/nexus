@@ -73,3 +73,4 @@ async def close_redis():
     """Gracefully closes Redis connection pool on application shutdown."""
     await redis_client.aclose()
     await redis_pool.disconnect()
+

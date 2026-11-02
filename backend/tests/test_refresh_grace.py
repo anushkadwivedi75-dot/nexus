@@ -187,3 +187,4 @@ async def test_refresh_replay_attack_revocation(db_session):
     # Verify user revocation epoch was set in Redis
     epoch = await get_user_revocation_epoch(str(user.id))
     assert epoch is not None
+

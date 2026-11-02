@@ -4,6 +4,7 @@ import sys
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy.pool import NullPool
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Ensure backend root is on sys.path
@@ -13,10 +14,25 @@ if backend_dir not in sys.path:
 
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis import redis_pool
 from app.main import app
 
-test_engine = create_async_engine(settings.async_database_url, echo=False, pool_size=10, max_overflow=20)
+test_engine = create_async_engine(settings.async_database_url, echo=False, poolclass=NullPool)
 TestSessionLocal = async_sessionmaker(bind=test_engine, class_=AsyncSession, expire_on_commit=False, autoflush=False)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def reset_redis_pool():
+    """Disconnects pooled Redis connections between tests to avoid closed-loop socket reuse."""
+    try:
+        await redis_pool.disconnect()
+    except Exception:
+        pass
+    yield
+    try:
+        await redis_pool.disconnect()
+    except Exception:
+        pass
 
 
 @pytest_asyncio.fixture(scope="function")

@@ -74,3 +74,4 @@ async def test_auth_full_lifecycle(client: AsyncClient):
     revoke_res = await client.post("/api/v1/auth/revoke-all-sessions", headers=headers)
     assert revoke_res.status_code == 200
     assert revoke_res.json()["data"]["count"] >= 1
+

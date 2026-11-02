@@ -27,3 +27,4 @@ def test_password_short_length_rejected():
 def test_timing_dummy_verification():
     # Calling verify_dummy does not raise any exception
     password_service.verify_dummy()
+

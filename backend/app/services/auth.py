@@ -300,9 +300,8 @@ class AuthService:
         res = await db.execute(stmt)
         await db.commit()
 
-        # Clean Redis
+        # Clean Redis grace stash for this session family
         await delete_grace_stash(str(family_id))
-        await set_user_revocation_epoch(str(user_id), int(now.timestamp()), ttl=900)
         return res.rowcount > 0
 
     @classmethod

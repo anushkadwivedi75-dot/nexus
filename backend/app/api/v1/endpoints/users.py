@@ -1,11 +1,13 @@
 import logging
 import uuid
 from typing import Annotated, List
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import APIResponse, SessionResponse
 from app.schemas.user import UserResponse, UserUpdate
@@ -62,13 +64,10 @@ async def list_sessions(
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """Lists all active device session families for the authenticated user."""
-    # Identify caller's active family from cookie if present
     raw_token = request.cookies.get(settings.refresh_cookie_name)
     current_family_id = None
     if raw_token:
         token_hash = auth_service.hash_token(raw_token)
-        from sqlalchemy import select
-        from app.models.refresh_token import RefreshToken
         res = await db.execute(select(RefreshToken.family_id).where(RefreshToken.token_hash == token_hash))
         current_family_id = res.scalar_one_or_none()
 
@@ -96,12 +95,9 @@ async def delete_session(
             detail="SESSION_NOT_FOUND",
         )
 
-    # If the user revoked their own current session, clear their cookie
     raw_token = request.cookies.get(settings.refresh_cookie_name)
     if raw_token:
         token_hash = auth_service.hash_token(raw_token)
-        from sqlalchemy import select
-        from app.models.refresh_token import RefreshToken
         res = await db.execute(select(RefreshToken.family_id).where(RefreshToken.token_hash == token_hash))
         curr_fam = res.scalar_one_or_none()
         if curr_fam == family_id:

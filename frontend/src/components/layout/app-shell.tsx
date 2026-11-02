@@ -1,10 +1,11 @@
 import * as React from "react"
+import { Outlet } from "react-router-dom"
 import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({ children }: { children?: React.ReactNode }) {
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
       {/* Desktop Left Sidebar (hidden on mobile) */}
@@ -20,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         {/* Scrollable Page Content */}
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-6 lg:p-8">
           <div className="mx-auto max-w-6xl w-full">
-            {children}
+            {children || <Outlet />}
           </div>
         </main>
       </div>

@@ -1,9 +1,23 @@
 export interface UserProfile {
   id: string
-  name: string
+  name?: string
+  full_name?: string
   email: string
   avatarUrl?: string
-  role: string
+  avatar_url?: string | null
+  role?: string
+  is_active?: boolean
+  is_verified?: boolean
+  created_at?: string
+}
+
+export interface SessionItem {
+  id: string
+  ip_address?: string | null
+  user_agent?: string | null
+  created_at: string
+  expires_at: string
+  is_current: boolean
 }
 
 export interface Workspace {

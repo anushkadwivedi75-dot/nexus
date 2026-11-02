@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import get_current_user, verify_csrf_and_origin
+from app.models.refresh_token import RefreshToken
 from app.models.user import User
 from app.schemas.auth import (
     APIResponse,

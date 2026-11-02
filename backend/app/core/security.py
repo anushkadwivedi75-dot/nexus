@@ -103,3 +103,4 @@ def verify_csrf_and_origin(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="MISSING_ANTI_CSRF_HEADER",
             )
+
