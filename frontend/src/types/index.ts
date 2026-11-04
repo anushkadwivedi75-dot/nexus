@@ -96,3 +96,83 @@ export interface StatCard {
   description: string
 }
 
+export interface Project {
+  id: string
+  workspace_id: string
+  name: string
+  key: string
+  description?: string | null
+  lead_id?: string | null
+  task_counter: number
+  is_private: boolean
+  status: 'active' | 'archived' | 'completed'
+  created_at: string
+  updated_at: string
+}
+
+export interface TaskStatus {
+  id: string
+  workspace_id: string
+  project_id: string
+  name: string
+  rank: number
+  color_hex: string
+  is_completed_state: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface TaskAssignee {
+  user_id: string
+  email?: string
+  full_name?: string
+  avatar_url?: string | null
+}
+
+export interface TaskTag {
+  id: string
+  name: string
+  color_hex: string
+}
+
+export interface Task {
+  id: string
+  workspace_id: string
+  project_id: string
+  task_number: number
+  title: string
+  description_md?: string | null
+  priority: 'low' | 'medium' | 'high' | 'urgent'
+  status_id: string
+  rank: number
+  version: number
+  due_date?: string | null
+  assignees: TaskAssignee[]
+  tags: TaskTag[]
+  created_at: string
+  updated_at: string
+}
+
+export interface BoardColumn {
+  status: TaskStatus
+  tasks: Task[]
+}
+
+export interface BoardData {
+  project_id: string
+  columns: BoardColumn[]
+}
+
+export interface RoadmapMilestone {
+  id: string
+  task_number: number
+  title: string
+  status_id: string
+  status_name: string
+  status_color: string
+  is_completed: boolean
+  priority: string
+  due_date: string
+}
+
+

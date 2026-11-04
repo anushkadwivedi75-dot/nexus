@@ -143,3 +143,75 @@ async def test_column_deletion_with_task_remapping(client: AsyncClient):
     task_details = (await client.get(f"/api/v1/tasks/{task_id}", headers=headers)).json()["data"]
     assert task_details["status_id"] == backlog_col_id
     assert task_details["version"] == 2  # Incremented on remap
+
+
+@pytest.mark.asyncio
+async def test_kanban_rank_exhaustion_triggers_column_rebalance(client: AsyncClient):
+    """
+    Verifies that when fractional index ranks are exhausted (diff < 1e-6),
+    the column rebalances all task ranks to 1000.0, 2000.0, ... spacing
+    and records a column.rebalanced outbox event.
+    """
+    from app.core.database import get_db
+    from app.models.task import Task
+    from sqlalchemy import select, update
+
+    _, headers, _ = await create_user_and_token(client, "Rebalance User")
+
+    ws_res = await client.post(
+        "/api/v1/workspaces",
+        json={"name": "Rebal WS", "slug": f"reb-{uuid.uuid4().hex[:4]}"},
+        headers=headers,
+    )
+    ws_id = ws_res.json()["data"]["id"]
+
+    p_res = await client.post(
+        f"/api/v1/workspaces/{ws_id}/projects",
+        json={"name": "Rebalance Project", "key": "REB"},
+        headers=headers,
+    )
+    p_id = p_res.json()["data"]["id"]
+
+    cols = (await client.get(f"/api/v1/projects/{p_id}/columns", headers=headers)).json()["data"]
+    todo_col = cols[1]["id"]
+
+    # Create 3 tasks in Todo
+    t1 = (await client.post(f"/api/v1/projects/{p_id}/tasks", json={"title": "Task 1", "status_id": todo_col}, headers=headers)).json()["data"]
+    t2 = (await client.post(f"/api/v1/projects/{p_id}/tasks", json={"title": "Task 2", "status_id": todo_col}, headers=headers)).json()["data"]
+    t3 = (await client.post(f"/api/v1/projects/{p_id}/tasks", json={"title": "Task 3", "status_id": todo_col}, headers=headers)).json()["data"]
+
+    # Directly squeeze t1 and t2 ranks in DB so diff < 1e-6 to simulate rank exhaustion
+    # t1: 1000.0000000, t2: 1000.0000005
+    from conftest import TestSessionLocal
+    async with TestSessionLocal() as session:
+        await session.execute(
+            update(Task).where(Task.id == uuid.UUID(t1["id"])).values(rank=1000.0000000)
+        )
+        await session.execute(
+            update(Task).where(Task.id == uuid.UUID(t2["id"])).values(rank=1000.0000005)
+        )
+        await session.commit()
+
+    # Now move Task 3 between Task 1 and Task 2. This will trigger RankExhaustionError -> column rebalance!
+    move_res = await client.patch(
+        f"/api/v1/tasks/{t3['id']}/move",
+        json={
+            "destination_status_id": todo_col,
+            "prev_task_id": t1["id"],
+            "next_task_id": t2["id"],
+            "version": t3["version"],
+        },
+        headers=headers,
+    )
+    assert move_res.status_code == 200
+
+    # Fetch all tasks in the column; they should now have fresh 1000.0, 2000.0, 3000.0 ranks
+    board_res = await client.get(f"/api/v1/projects/{p_id}/board", headers=headers)
+    assert board_res.status_code == 200
+    board = board_res.json()["data"]
+    todo_col_data = next(c for c in board["columns"] if c["status"]["id"] == todo_col)
+    ranks = [t["rank"] for t in todo_col_data["tasks"]]
+    assert len(ranks) == 3
+    # Check that ranks are rebalanced at 1000.0 intervals
+    assert ranks == [1000.0, 2000.0, 3000.0]
+

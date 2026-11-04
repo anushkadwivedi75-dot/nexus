@@ -24,6 +24,7 @@ export function App() {
           <Route element={<AppShell />}>
             <Route path="/" element={<OverviewPage />} />
             <Route path="/projects" element={<ProjectsPage />} />
+            <Route path="/projects/:projectId" element={<TasksPage />} />
             <Route path="/tasks" element={<TasksPage />} />
             <Route path="/members" element={<MembersPage />} />
             <Route path="/settings" element={<SettingsPage />} />

@@ -477,8 +477,7 @@ class TaskService:
             outbox = OutboxEvent(
                 id=uuid.uuid4(),
                 workspace_id=workspace_id,
-                aggregate_type="task_status",
-                aggregate_id=dest_status_id,
+                channel=f"workspace:{workspace_id}",
                 event_type="column.rebalanced",
                 payload={
                     "project_id": str(project.id),

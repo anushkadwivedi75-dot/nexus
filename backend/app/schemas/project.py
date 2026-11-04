@@ -16,7 +16,7 @@ class ProjectBase(BaseModel):
     @field_validator("key")
     @classmethod
     def validate_key(cls, v: str) -> str:
-        clean = v.strip().upper()
+        clean = v.strip()
         if not KEY_REGEX.match(clean):
             raise ValueError("Project key must be 2 to 10 uppercase alphanumeric characters (e.g. 'NEX', 'ENG1').")
         return clean

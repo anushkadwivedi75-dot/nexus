@@ -1,136 +1,149 @@
-import { CheckSquare, Plus, Filter, Calendar } from "lucide-react"
+import { useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import {
+  Lock,
+  Globe,
+  Layers,
+  ArrowLeft,
+} from "lucide-react"
 import { useWorkspaceStore } from "@/stores/workspace-store"
+import { useProjectStore } from "@/stores/project-store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-
-const mockUserTasks = [
-  {
-    id: "task-1",
-    key: "CORE-104",
-    title: "Implement deterministic two-column status locks (ORDER BY id ASC)",
-    project: "Real-Time Outbox Engine",
-    priority: "urgent",
-    status: "In Progress",
-    dueDate: "Today",
-  },
-  {
-    id: "task-2",
-    key: "UI-15",
-    title: "Build collapsible left sidebar with tooltips and active state pill",
-    project: "Design System & Dark-First Shell",
-    priority: "high",
-    status: "In Review",
-    dueDate: "Tomorrow",
-  },
-  {
-    id: "task-3",
-    key: "AUTH-89",
-    title: "Verify crash-safe refresh grace-chain traversal on Redis miss",
-    project: "Session Security & Rotation",
-    priority: "medium",
-    status: "Done",
-    dueDate: "Oct 28",
-  },
-  {
-    id: "task-4",
-    key: "CORE-99",
-    title: "Configure 64-bit atomic counter check constraint in PostgreSQL",
-    project: "Real-Time Outbox Engine",
-    priority: "low",
-    status: "Backlog",
-    dueDate: "Nov 4",
-  },
-]
+import { KanbanBoard } from "@/components/kanban/board"
 
 export function TasksPage() {
-  const { setCommandPaletteOpen } = useWorkspaceStore()
+  const { projectId } = useParams<{ projectId?: string }>()
+  const navigate = useNavigate()
+  const { currentWorkspace } = useWorkspaceStore()
+  const {
+    projects,
+    activeProject,
+    isLoadingProjects,
+    fetchProjects,
+    setActiveProject,
+  } = useProjectStore()
+
+  useEffect(() => {
+    if (currentWorkspace?.id) {
+      fetchProjects(currentWorkspace.id)
+    }
+  }, [currentWorkspace?.id])
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      if (projectId) {
+        const match = projects.find((p) => p.id === projectId)
+        if (match && match.id !== activeProject?.id) {
+          setActiveProject(match)
+        }
+      } else if (!activeProject) {
+        setActiveProject(projects[0])
+      }
+    }
+  }, [projectId, projects])
+
+  const handleProjectChange = (id: string) => {
+    const selected = projects.find((p) => p.id === id)
+    if (selected) {
+      setActiveProject(selected)
+      navigate(`/projects/${selected.id}`)
+    }
+  }
+
+  if (isLoadingProjects && projects.length === 0) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    )
+  }
+
+  if (projects.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-border/70 p-12 text-center max-w-lg mx-auto mt-12">
+        <Layers className="mx-auto h-8 w-8 text-muted-foreground/50 mb-3" />
+        <h4 className="text-sm font-semibold text-foreground mb-1">No Projects Found</h4>
+        <p className="text-xs text-muted-foreground mb-4">
+          Create a project to access Kanban boards and workflow automation.
+        </p>
+        <Button size="sm" onClick={() => navigate("/projects")} className="text-xs">
+          Go to Projects
+        </Button>
+      </div>
+    )
+  }
+
+  const current = activeProject || projects[0]
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-5">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            My Tasks
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Tasks assigned to you across all active workspace projects
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
+    <div className="space-y-4">
+      {/* Board Top Bar */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-4">
+        <div className="flex items-center gap-3">
           <Button
-            size="sm"
-            onClick={() => setCommandPaletteOpen(true)}
-            className="text-xs"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => navigate("/projects")}
+            title="Back to Projects"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
-            New Task
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-        </div>
-      </div>
 
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs">
-            <Filter className="h-3 w-3 mr-1" /> All Statuses
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs">
-            Priority: High & Urgent
-          </Button>
-        </div>
-        <span className="text-xs text-muted-foreground">
-          Showing 4 of 8 tasks
-        </span>
-      </div>
-
-      <div className="space-y-2">
-        {mockUserTasks.map((t) => (
-          <Card key={t.id} className="border-border/60 bg-card/50 hover:bg-card hover:border-border transition-colors">
-            <CardContent className="p-3 flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <CheckSquare className="h-4 w-4 text-muted-foreground hover:text-primary cursor-pointer shrink-0" />
-                <Badge variant="secondary" className="font-mono text-[10px] px-1 py-0 h-4 shrink-0">
-                  {t.key}
-                </Badge>
-                <div className="flex flex-col min-w-0">
-                  <span className="text-xs font-medium text-foreground truncate">
-                    {t.title}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground truncate">
-                    {t.project}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20">
+                {current.key}
+              </span>
+              <h1 className="text-lg font-bold tracking-tight text-foreground">
+                {current.name}
+              </h1>
+              {current.is_private ? (
                 <Badge
-                  variant={
-                    t.priority === "urgent"
-                      ? "destructive"
-                      : t.priority === "high"
-                      ? "warning"
-                      : "secondary"
-                  }
-                  className="text-[9px] px-1.5 py-0 capitalize"
+                  variant="outline"
+                  className="text-[10px] px-1.5 py-0 text-amber-400 border-amber-500/30 bg-amber-500/10 gap-1"
                 >
-                  {t.priority}
+                  <Lock className="h-2.5 w-2.5" />
+                  Private
                 </Badge>
-
-                <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <Calendar className="h-3 w-3" />
-                  <span>{t.dueDate}</span>
-                </div>
-
-                <Badge variant="outline" className="text-[10px] font-normal">
-                  {t.status}
+              ) : (
+                <Badge
+                  variant="secondary"
+                  className="text-[10px] px-1.5 py-0 text-muted-foreground gap-1"
+                >
+                  <Globe className="h-2.5 w-2.5" />
+                  Public
                 </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              )}
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {current.description || `Kanban workflow & task board for ${current.name}`}
+            </p>
+          </div>
+        </div>
+
+        {/* Project Selector & Actions */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs text-muted-foreground hidden md:inline">Project:</span>
+            <select
+              value={current.id}
+              onChange={(e) => handleProjectChange(e.target.value)}
+              className="h-8 rounded-md border border-input bg-card px-2.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.key} - {p.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
+
+      {/* Interactive Kanban Board */}
+      {current && <KanbanBoard project={current} />}
     </div>
   )
 }
-
