@@ -136,3 +136,4 @@ async def test_task_updates_and_soft_deletion(client: AsyncClient):
     assert board_res.status_code == 200
     all_board_tasks = [t for col in board_res.json()["data"]["columns"] for t in col["tasks"]]
     assert not any(t["id"] == t_id for t in all_board_tasks)
+

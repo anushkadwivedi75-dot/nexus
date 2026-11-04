@@ -54,3 +54,4 @@ class TaskStatusResponse(BaseModel):
     is_completed_state: bool
 
     model_config = ConfigDict(from_attributes=True)
+

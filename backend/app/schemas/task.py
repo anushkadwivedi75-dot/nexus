@@ -90,3 +90,4 @@ class BoardColumnResponse(BaseModel):
 class BoardResponse(BaseModel):
     project_id: uuid.UUID
     columns: list[BoardColumnResponse] = []
+

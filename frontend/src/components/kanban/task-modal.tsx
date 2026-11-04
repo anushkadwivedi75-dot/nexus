@@ -36,25 +36,27 @@ export const TaskModal: React.FC<TaskModalProps> = ({
   onUpdate,
   onDelete,
 }) => {
-  if (!task) return null
-
-  const [title, setTitle] = useState(task.title)
-  const [descriptionMd, setDescriptionMd] = useState(task.description_md || "")
-  const [priority, setPriority] = useState(task.priority)
-  const [statusId, setStatusId] = useState(task.status_id)
-  const [dueDate, setDueDate] = useState(task.due_date ? task.due_date.slice(0, 10) : "")
+  const [title, setTitle] = useState(task?.title || "")
+  const [descriptionMd, setDescriptionMd] = useState(task?.description_md || "")
+  const [priority, setPriority] = useState(task?.priority || "medium")
+  const [statusId, setStatusId] = useState(task?.status_id || "")
+  const [dueDate, setDueDate] = useState(task?.due_date ? task.due_date.slice(0, 10) : "")
   const [isPreview, setIsPreview] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
-    setTitle(task.title)
-    setDescriptionMd(task.description_md || "")
-    setPriority(task.priority)
-    setStatusId(task.status_id)
-    setDueDate(task.due_date ? task.due_date.slice(0, 10) : "")
-    setIsPreview(false)
+    if (task) {
+      setTitle(task.title)
+      setDescriptionMd(task.description_md || "")
+      setPriority(task.priority)
+      setStatusId(task.status_id)
+      setDueDate(task.due_date ? task.due_date.slice(0, 10) : "")
+      setIsPreview(false)
+    }
   }, [task])
+
+  if (!task) return null
 
   const handleSave = async () => {
     setIsSaving(true)

@@ -228,8 +228,6 @@ export const ProjectMembersDialog: React.FC<ProjectMembersDialogProps> = ({
   isOpen,
   onClose,
 }) => {
-  if (!project) return null
-
   const [members, setMembers] = useState<any[]>([])
   const [workspaceMembers, setWorkspaceMembers] = useState<WorkspaceMemberItem[]>([])
   const [selectedUserId, setSelectedUserId] = useState("")
@@ -237,6 +235,7 @@ export const ProjectMembersDialog: React.FC<ProjectMembersDialogProps> = ({
   const [error, setError] = useState<string | null>(null)
 
   const loadData = async () => {
+    if (!project) return
     setIsLoading(true)
     try {
       const [projMembersRes, wsMembersRes] = await Promise.all([
@@ -257,10 +256,12 @@ export const ProjectMembersDialog: React.FC<ProjectMembersDialogProps> = ({
   }
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && project) {
       loadData()
     }
-  }, [isOpen, project.id])
+  }, [isOpen, project?.id])
+
+  if (!project) return null
 
   const handleAddMember = async () => {
     if (!selectedUserId) return

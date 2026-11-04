@@ -15,3 +15,4 @@ class ProjectMemberResponse(BaseModel):
     user: WorkspaceMemberUser | None = None
 
     model_config = ConfigDict(from_attributes=True)
+

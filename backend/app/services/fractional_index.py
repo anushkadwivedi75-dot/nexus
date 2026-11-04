@@ -73,3 +73,4 @@ class FractionalIndexService:
 
 
 fractional_index_service = FractionalIndexService()
+

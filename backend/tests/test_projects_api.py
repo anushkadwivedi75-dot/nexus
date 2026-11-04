@@ -149,3 +149,4 @@ async def test_private_project_membership_and_isolation(client: AsyncClient):
     # 5. Outsider (not in workspace) cannot access or be added
     out_res = await client.get(f"/api/v1/projects/{p_id}", headers=outsider_headers)
     assert out_res.status_code == 403
+

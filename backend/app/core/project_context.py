@@ -119,3 +119,4 @@ async def require_project_manager(
             detail="Insufficient permissions: Project Lead, Workspace Admin, or Workspace Owner required.",
         )
     return ctx
+
