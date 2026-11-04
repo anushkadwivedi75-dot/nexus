@@ -23,6 +23,7 @@ from app.schemas.comment import (
     CommentResponse,
     CommentUpdate,
 )
+from app.services.notification import NotificationService
 from app.services.outbox import outbox_service
 
 
@@ -164,6 +165,7 @@ class CommentService:
         task, project = await cls._verify_task_access(db, workspace_id, task_id, author, user_role)
 
         # Validate parent comment if this is a reply
+        parent: Optional[Comment] = None
         if data.parent_comment_id:
             parent_stmt = select(Comment).where(
                 Comment.id == data.parent_comment_id,
@@ -226,6 +228,55 @@ class CommentService:
                     email=user_obj.email,
                 )
             )
+
+        # Generate mention notifications
+        actor_name = author.full_name or author.email
+        task_label = f"{project.prefix}-{task.task_number}"
+        for uid, _ in mentions:
+            await NotificationService.create_notification(
+                db=db,
+                workspace_id=workspace_id,
+                recipient_id=uid,
+                actor_id=author.id,
+                action_type="comment_mention",
+                entity_type="comment",
+                entity_id=comment.id,
+                message=f"{actor_name} mentioned you in a comment on {task_label}: {task.title}",
+                payload={
+                    "comment_id": str(comment.id),
+                    "task_id": str(task.id),
+                    "project_id": str(project.id),
+                    "task_title": task.title,
+                    "task_number": task_label,
+                    "snippet": comment.content[:120],
+                },
+                deduplication_key=f"mention:{comment.id}:{uid}",
+            )
+
+        # Generate reply notification if replying to another member's comment
+        if data.parent_comment_id and parent and parent.author_id != author.id:
+            mentioned_uids = {uid for uid, _ in mentions}
+            if parent.author_id not in mentioned_uids:
+                await NotificationService.create_notification(
+                    db=db,
+                    workspace_id=workspace_id,
+                    recipient_id=parent.author_id,
+                    actor_id=author.id,
+                    action_type="comment_reply",
+                    entity_type="comment",
+                    entity_id=comment.id,
+                    message=f"{actor_name} replied to your comment on {task_label}: {task.title}",
+                    payload={
+                        "comment_id": str(comment.id),
+                        "parent_comment_id": str(parent.id),
+                        "task_id": str(task.id),
+                        "project_id": str(project.id),
+                        "task_title": task.title,
+                        "task_number": task_label,
+                        "snippet": comment.content[:120],
+                    },
+                    deduplication_key=f"reply:{comment.id}:{parent.author_id}",
+                )
 
         # Stage transactional outbox event
         await outbox_service.create_event(

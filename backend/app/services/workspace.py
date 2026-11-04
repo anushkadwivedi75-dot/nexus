@@ -336,6 +336,27 @@ class WorkspaceService:
         )
         db.add(audit)
 
+        # Stage notification to new owner
+        from app.services.notification import NotificationService
+        actor_name = actor.full_name or actor.email
+        await NotificationService.create_notification(
+            db=db,
+            workspace_id=workspace.id,
+            recipient_id=new_owner_id,
+            actor_id=actor.id,
+            action_type="workspace_ownership_transferred",
+            entity_type="workspace",
+            entity_id=workspace.id,
+            message=f"{actor_name} transferred ownership of workspace '{workspace.name}' to you.",
+            payload={
+                "workspace_id": str(workspace.id),
+                "workspace_name": workspace.name,
+                "workspace_slug": workspace.slug,
+                "previous_owner_id": str(current_owner_id),
+            },
+            deduplication_key=f"ownership:{workspace.id}:{new_owner_id}",
+        )
+
         # Transactional Outbox Event
         await outbox_service.create_event(
             db=db,

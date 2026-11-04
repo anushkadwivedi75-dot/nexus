@@ -133,6 +133,30 @@ class TaskService:
             )
             db.add(tt)
 
+        # 6b. Stage notifications for assigned members
+        from app.services.notification import NotificationService
+        actor_name = creator.full_name or creator.email
+        task_label = f"{project.key}-{task.task_number}"
+        for uid in data.assignee_ids:
+            await NotificationService.create_notification(
+                db=db,
+                workspace_id=workspace_id,
+                recipient_id=uid,
+                actor_id=creator.id,
+                action_type="task_assigned",
+                entity_type="task",
+                entity_id=task.id,
+                message=f"{actor_name} assigned you to {task_label}: {task.title}",
+                payload={
+                    "task_id": str(task.id),
+                    "project_id": str(project.id),
+                    "task_title": task.title,
+                    "task_number": task_label,
+                    "priority": task.priority,
+                },
+                deduplication_key=f"assign:{task.id}:{uid}",
+            )
+
         # 7. Transactional Outbox Event
         await outbox_service.create_event(
             db=db,
@@ -249,6 +273,7 @@ class TaskService:
         project_id: uuid.UUID,
         task_id: uuid.UUID,
         data: TaskUpdate,
+        current_user: User | None = None,
     ) -> dict:
         """Updates task fields with version increment and assignee/tag management."""
         stmt = (
@@ -279,12 +304,21 @@ class TaskService:
         if data.due_date is not None:
             task.due_date = data.due_date
 
+        # Track assignee modifications for notifications
+        added_assignee_ids: set[uuid.UUID] = set()
+        removed_assignee_ids: set[uuid.UUID] = set()
+
         # Update assignees if specified
         if data.assignee_ids is not None:
-            # Delete old assignees
-            await db.execute(
-                select(TaskAssignee).where(TaskAssignee.task_id == task.id)
+            # Capture existing assignees before deletion
+            old_assignees_res = await db.execute(
+                select(TaskAssignee.user_id).where(TaskAssignee.task_id == task.id)
             )
+            old_assignee_ids = set(old_assignees_res.scalars().all())
+            new_assignee_ids = set(data.assignee_ids)
+            added_assignee_ids = new_assignee_ids - old_assignee_ids
+            removed_assignee_ids = old_assignee_ids - new_assignee_ids
+
             from sqlalchemy import delete
             await db.execute(delete(TaskAssignee).where(TaskAssignee.task_id == task.id))
 
@@ -331,6 +365,57 @@ class TaskService:
                 db.add(TaskTag(workspace_id=workspace_id, task_id=task.id, tag_id=tag.id))
 
         task.version += 1
+
+        # Dispatch assignee notifications
+        if added_assignee_ids or removed_assignee_ids:
+            from app.services.notification import NotificationService
+            actor_name = (current_user.full_name or current_user.email) if current_user else "A team member"
+            actor_id = current_user.id if current_user else None
+
+            # Fetch project key for notification label
+            proj_stmt = select(Project.key).where(Project.id == project_id)
+            proj_res = await db.execute(proj_stmt)
+            pkey = proj_res.scalar() or "TASK"
+            task_label = f"{pkey}-{task.task_number}"
+
+            for uid in added_assignee_ids:
+                await NotificationService.create_notification(
+                    db=db,
+                    workspace_id=workspace_id,
+                    recipient_id=uid,
+                    actor_id=actor_id,
+                    action_type="task_assigned",
+                    entity_type="task",
+                    entity_id=task.id,
+                    message=f"{actor_name} assigned you to {task_label}: {task.title}",
+                    payload={
+                        "task_id": str(task.id),
+                        "project_id": str(project_id),
+                        "task_title": task.title,
+                        "task_number": task_label,
+                        "priority": task.priority,
+                    },
+                    deduplication_key=f"assign:{task.id}:{uid}",
+                )
+
+            for uid in removed_assignee_ids:
+                await NotificationService.create_notification(
+                    db=db,
+                    workspace_id=workspace_id,
+                    recipient_id=uid,
+                    actor_id=actor_id,
+                    action_type="task_unassigned",
+                    entity_type="task",
+                    entity_id=task.id,
+                    message=f"{actor_name} unassigned you from {task_label}: {task.title}",
+                    payload={
+                        "task_id": str(task.id),
+                        "project_id": str(project_id),
+                        "task_title": task.title,
+                        "task_number": task_label,
+                    },
+                    deduplication_key=f"unassign:{task.id}:{uid}:{task.version}",
+                )
 
         # Transactional Outbox Event
         await outbox_service.create_event(
@@ -405,6 +490,7 @@ class TaskService:
         project: Project,
         task_id: uuid.UUID,
         move: TaskMove,
+        current_user: User | None = None,
     ) -> dict:
         """
         Executes deterministic task move under two-column status locks.
@@ -560,6 +646,40 @@ class TaskService:
                 "version": task.version,
             },
         )
+
+        # Stage notifications to assignees if status changed across columns
+        if source_status_id != dest_status_id:
+            from app.services.notification import NotificationService
+            actor_name = (current_user.full_name or current_user.email) if current_user else "A team member"
+            actor_id = current_user.id if current_user else None
+
+            dest_status_name = next((s.name for s in locked_statuses if s.id == dest_status_id), "another column")
+            assignees_res = await db.execute(
+                select(TaskAssignee.user_id).where(TaskAssignee.task_id == task.id)
+            )
+            assignee_ids = assignees_res.scalars().all()
+            task_label = f"{project.key}-{task.task_number}"
+
+            for uid in assignee_ids:
+                await NotificationService.create_notification(
+                    db=db,
+                    workspace_id=workspace_id,
+                    recipient_id=uid,
+                    actor_id=actor_id,
+                    action_type="task_status_changed",
+                    entity_type="task",
+                    entity_id=task.id,
+                    message=f"{actor_name} moved {task_label} ({task.title}) to {dest_status_name}",
+                    payload={
+                        "task_id": str(task.id),
+                        "project_id": str(project.id),
+                        "status_id": str(dest_status_id),
+                        "status_name": dest_status_name,
+                        "task_title": task.title,
+                        "task_number": task_label,
+                    },
+                    deduplication_key=f"status:{task.id}:{dest_status_id}:{task.version}",
+                )
 
         await db.commit()
         return await cls.get_task_details(db, workspace_id, project.id, task.id, project_key=project.key)

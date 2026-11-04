@@ -113,6 +113,7 @@ async def update_task(
         project_id=ctx.project.id,
         task_id=task.id,
         data=data,
+        current_user=ctx.current_user,
     )
     return APIResponse(data=updated)
 
@@ -161,6 +162,7 @@ async def move_task(
         project=ctx.project,
         task_id=task.id,
         move=move,
+        current_user=ctx.current_user,
     )
     return APIResponse(data=moved)
 

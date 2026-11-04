@@ -295,6 +295,7 @@ class WebSocketManager:
         self._redis = redis
         pubsub = redis.pubsub()
         await pubsub.psubscribe("workspace:*")
+        await pubsub.psubscribe("user:*")
         await pubsub.subscribe("nexus:control:auth_invalidation")
         logger.info("WebSocketManager Redis Pub/Sub listener subscribed.")
 

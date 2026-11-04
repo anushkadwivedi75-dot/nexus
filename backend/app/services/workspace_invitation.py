@@ -303,6 +303,28 @@ class WorkspaceInvitationService:
         )
         db.add(audit)
 
+        # Stage notification to inviter
+        from app.services.notification import NotificationService
+        user_name = user.full_name or user.email
+        await NotificationService.create_notification(
+            db=db,
+            workspace_id=workspace.id,
+            recipient_id=invitation.invited_by_id,
+            actor_id=user.id,
+            action_type="workspace_invitation_accepted",
+            entity_type="workspace",
+            entity_id=workspace.id,
+            message=f"{user_name} accepted your invitation to join '{workspace.name}'.",
+            payload={
+                "workspace_id": str(workspace.id),
+                "workspace_name": workspace.name,
+                "workspace_slug": workspace.slug,
+                "joined_user_id": str(user.id),
+                "role": invitation.role,
+            },
+            deduplication_key=f"invite_accepted:{invitation.id}",
+        )
+
         # Transactional Outbox Event
         await outbox_service.create_event(
             db=db,
