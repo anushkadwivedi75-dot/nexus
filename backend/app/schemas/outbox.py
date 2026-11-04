@@ -41,3 +41,4 @@ class ControlInvalidationMessage(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc).timestamp(),
         description="Unix timestamp of invalidation event",
     )
+

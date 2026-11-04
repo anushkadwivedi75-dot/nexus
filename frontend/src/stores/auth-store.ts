@@ -10,6 +10,7 @@
 import { create } from 'zustand';
 import { apiClient } from '../services/api';
 import { authCoordinator } from '../services/auth-coordination';
+import { realTimeClient } from '../services/websocket-client';
 import type { UserProfile } from '../types';
 
 interface AuthState {
@@ -34,6 +35,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
     getAccessToken: () => get().accessToken,
     setAccessToken: (token: string) => set({ accessToken: token, isAuthenticated: true }),
     onAuthFailure: () => {
+      realTimeClient.disconnect();
       set({ user: null, accessToken: null, isAuthenticated: false });
     },
   });
@@ -55,6 +57,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
         }
       }
     } else if (msg.type === 'AUTH_LOGOUT') {
+      realTimeClient.disconnect();
       set({ user: null, accessToken: null, isAuthenticated: false });
     }
   });
@@ -133,6 +136,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       } catch (err) {
         console.warn('[useAuthStore] Logout API call failed:', err);
       } finally {
+        realTimeClient.disconnect();
         set({
           user: null,
           accessToken: null,

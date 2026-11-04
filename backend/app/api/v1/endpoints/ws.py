@@ -151,3 +151,4 @@ async def websocket_endpoint(
         logger.debug("WebSocket error on connection %s: %s", conn.connection_id, e)
     finally:
         await websocket_manager.unregister(conn.connection_id)
+

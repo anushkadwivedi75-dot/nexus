@@ -168,3 +168,4 @@ async def test_websocket_redis_fanout_and_member_eviction(client: AsyncClient):
             with pytest.raises(starlette.websockets.WebSocketDisconnect) as exc_info:
                 ws.receive_json()
             assert exc_info.value.code == 4403
+

@@ -4,8 +4,22 @@ import { Sidebar } from "@/components/layout/sidebar"
 import { Header } from "@/components/layout/header"
 import { MobileNav } from "@/components/layout/mobile-nav"
 import { CommandPalette } from "@/components/layout/command-palette"
+import { useWorkspaceStore } from "@/stores/workspace-store"
+import { useProjectStore } from "@/stores/project-store"
 
 export function AppShell({ children }: { children?: React.ReactNode }) {
+  const currentWorkspace = useWorkspaceStore((s) => s.currentWorkspace)
+  const initRealTime = useProjectStore((s) => s.initRealTime)
+
+  React.useEffect(() => {
+    if (currentWorkspace?.id) {
+      const cleanup = initRealTime(currentWorkspace.id)
+      return () => {
+        cleanup()
+      }
+    }
+  }, [currentWorkspace?.id, initRealTime])
+
   return (
     <div className="flex h-screen w-full overflow-hidden bg-background font-sans">
       {/* Desktop Left Sidebar (hidden on mobile) */}

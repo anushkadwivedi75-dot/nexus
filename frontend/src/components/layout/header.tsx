@@ -21,6 +21,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Badge } from "@/components/ui/badge"
 import { currentUser } from "@/data/mock-data"
+import { RealTimeStatusPill } from "@/components/common/realtime-status-pill"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
   "/": { title: "Overview", category: "Workspace" },
@@ -85,6 +86,8 @@ export function Header() {
 
       {/* Right: Search, Notifications & Profile */}
       <div className="flex items-center gap-2">
+        <RealTimeStatusPill />
+
         {/* Command Palette Trigger */}
         <button
           onClick={() => setCommandPaletteOpen(true)}

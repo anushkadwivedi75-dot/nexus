@@ -1,6 +1,7 @@
 import { create } from "zustand"
 import type { Project, BoardData, Task, TaskStatus, RoadmapMilestone } from "@/types"
 import { apiClient } from "@/services/api"
+import { realTimeClient, type EventEnvelope } from "@/services/websocket-client"
 
 interface ProjectState {
   projects: Project[]
@@ -65,6 +66,10 @@ interface ProjectState {
   // Roadmap
   fetchRoadmap: (projectId: string) => Promise<void>
   clearConflictMessage: () => void
+
+  // Real-Time Synchronization
+  handleRealTimeEvent: (event: EventEnvelope) => void
+  initRealTime: (workspaceId: string) => () => void
 }
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
@@ -349,7 +354,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         }
         return false
       }
-    } catch (err: any) {
+    } catch {
       // 409 conflict or network failure -> rollback
       set({
         board: snapshotBoard,
@@ -437,4 +442,268 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   },
 
   clearConflictMessage: () => set({ conflictMessage: null }),
+
+  handleRealTimeEvent: (event: EventEnvelope) => {
+    if (event.event_type === "task.created") {
+      const payload = event.payload
+      const activeProj = get().activeProject
+      if (!activeProj || activeProj.id !== payload.project_id) return
+
+      set((state) => {
+        if (!state.board) return state
+        const alreadyExists = state.board.columns.some((col) =>
+          col.tasks.some((t) => t.id === payload.task_id)
+        )
+        if (alreadyExists) return state
+
+        const newTask: Task = {
+          id: payload.task_id,
+          workspace_id: event.workspace_id,
+          project_id: payload.project_id,
+          status_id: payload.status_id,
+          task_number: payload.task_number || 0,
+          title: payload.title || "Untitled Task",
+          description_md: null,
+          priority: (payload.priority as any) || "medium",
+          rank: payload.rank ?? 1000,
+          version: payload.version ?? 1,
+          due_date: payload.due_date || null,
+          assignees: [],
+          tags: [],
+          created_at: event.occurred_at,
+          updated_at: event.occurred_at,
+        }
+
+        const nextCols = state.board.columns.map((col) => {
+          if (col.status.id === newTask.status_id) {
+            const updatedTasks = [...col.tasks, newTask].sort((a, b) => a.rank - b.rank)
+            return { ...col, tasks: updatedTasks }
+          }
+          return col
+        })
+
+        return {
+          board: { ...state.board, columns: nextCols },
+          projects: state.projects.map((p) =>
+            p.id === activeProj.id ? { ...p, task_counter: p.task_counter + 1 } : p
+          ),
+        }
+      })
+    } else if (event.event_type === "task.updated") {
+      const payload = event.payload
+      const activeProj = get().activeProject
+      if (!activeProj || activeProj.id !== payload.project_id) return
+
+      set((state) => {
+        if (!state.board) return state
+
+        let foundTask: Task | null = null
+        let currentStatusId: string | null = null
+
+        for (const col of state.board.columns) {
+          const match = col.tasks.find((t) => t.id === payload.task_id)
+          if (match) {
+            foundTask = match
+            currentStatusId = col.status.id
+            break
+          }
+        }
+
+        if (!foundTask) return state
+
+        // Version check for out-of-order event protection
+        if (payload.version !== undefined && payload.version < foundTask.version) {
+          return state
+        }
+
+        const targetStatusId = payload.status_id || currentStatusId
+        const updatedTask: Task = {
+          ...foundTask,
+          title: payload.title !== undefined ? payload.title : foundTask.title,
+          priority: payload.priority !== undefined ? payload.priority : foundTask.priority,
+          rank: payload.rank !== undefined ? payload.rank : foundTask.rank,
+          version: payload.version !== undefined ? payload.version : foundTask.version + 1,
+          due_date: payload.due_date !== undefined ? payload.due_date : foundTask.due_date,
+          status_id: targetStatusId,
+          updated_at: event.occurred_at || new Date().toISOString(),
+        }
+
+        if (targetStatusId === currentStatusId) {
+          const nextCols = state.board.columns.map((col) => {
+            if (col.status.id === currentStatusId) {
+              const tasks = col.tasks
+                .map((t) => (t.id === payload.task_id ? updatedTask : t))
+                .sort((a, b) => a.rank - b.rank)
+              return { ...col, tasks }
+            }
+            return col
+          })
+          return { board: { ...state.board, columns: nextCols } }
+        } else {
+          const nextCols = state.board.columns.map((col) => {
+            if (col.status.id === currentStatusId) {
+              return { ...col, tasks: col.tasks.filter((t) => t.id !== payload.task_id) }
+            }
+            if (col.status.id === targetStatusId) {
+              const tasks = [...col.tasks, updatedTask].sort((a, b) => a.rank - b.rank)
+              return { ...col, tasks }
+            }
+            return col
+          })
+          return { board: { ...state.board, columns: nextCols } }
+        }
+      })
+    } else if (event.event_type === "task.deleted") {
+      const payload = event.payload
+      const activeProj = get().activeProject
+      if (!activeProj || activeProj.id !== payload.project_id) return
+
+      set((state) => {
+        if (!state.board) return state
+        const nextCols = state.board.columns.map((col) => ({
+          ...col,
+          tasks: col.tasks.filter((t) => t.id !== payload.task_id),
+        }))
+        return { board: { ...state.board, columns: nextCols } }
+      })
+    } else if (event.event_type === "task.moved") {
+      const payload = event.payload
+      const activeProj = get().activeProject
+      if (!activeProj || activeProj.id !== payload.project_id) return
+
+      set((state) => {
+        if (!state.board) return state
+
+        let movedTask: Task | null = null
+        for (const col of state.board.columns) {
+          const found = col.tasks.find((t) => t.id === payload.task_id)
+          if (found) {
+            movedTask = found
+            break
+          }
+        }
+
+        if (!movedTask) return state
+
+        if (payload.version !== undefined && payload.version < movedTask.version) {
+          return state
+        }
+
+        const updatedTask: Task = {
+          ...movedTask,
+          status_id: payload.destination_status_id,
+          rank: payload.rank,
+          version: payload.version,
+          updated_at: event.occurred_at || new Date().toISOString(),
+        }
+
+        const nextCols = state.board.columns.map((col) => {
+          let tasks = col.tasks.filter((t) => t.id !== payload.task_id)
+          if (col.status.id === payload.destination_status_id) {
+            tasks = [...tasks, updatedTask].sort((a, b) => a.rank - b.rank)
+          }
+          return { ...col, tasks }
+        })
+
+        return { board: { ...state.board, columns: nextCols } }
+      })
+    } else if (event.event_type === "column.rebalanced") {
+      const payload = event.payload
+      const activeProj = get().activeProject
+      if (!activeProj || activeProj.id !== payload.project_id) return
+
+      set((state) => {
+        if (!state.board) return state
+        const taskMap = new Map<string, { rank: number; version: number }>()
+        for (const item of payload.tasks || []) {
+          taskMap.set(item.task_id, item)
+        }
+
+        const nextCols = state.board.columns.map((col) => {
+          if (col.status.id === payload.status_id) {
+            const tasks = col.tasks
+              .map((t) => {
+                const updated = taskMap.get(t.id)
+                if (updated) {
+                  return { ...t, rank: updated.rank, version: updated.version }
+                }
+                return t
+              })
+              .sort((a, b) => a.rank - b.rank)
+            return { ...col, tasks }
+          }
+          return col
+        })
+
+        return { board: { ...state.board, columns: nextCols } }
+      })
+    } else if (event.event_type === "project.created") {
+      const payload = event.payload
+      set((state) => {
+        if (state.projects.some((p) => p.id === payload.project_id)) return state
+        const newProj: Project = {
+          id: payload.project_id,
+          workspace_id: event.workspace_id,
+          name: payload.name,
+          key: payload.key,
+          description: payload.description || "",
+          status: payload.status || "active",
+          is_private: payload.is_private ?? false,
+          task_counter: 0,
+          created_at: event.occurred_at,
+          updated_at: event.occurred_at,
+        }
+        return { projects: [newProj, ...state.projects] }
+      })
+    } else if (event.event_type === "project.updated") {
+      const payload = event.payload
+      set((state) => ({
+        projects: state.projects.map((p) =>
+          p.id === payload.project_id ? { ...p, ...payload } : p
+        ),
+        activeProject:
+          state.activeProject?.id === payload.project_id
+            ? { ...state.activeProject, ...payload }
+            : state.activeProject,
+      }))
+    } else if (event.event_type === "project.deleted") {
+      const payload = event.payload
+      set((state) => {
+        const remaining = state.projects.filter((p) => p.id !== payload.project_id)
+        return {
+          projects: remaining,
+          activeProject:
+            state.activeProject?.id === payload.project_id
+              ? remaining[0] || null
+              : state.activeProject,
+          board: state.activeProject?.id === payload.project_id ? null : state.board,
+        }
+      })
+    }
+  },
+
+  initRealTime: (workspaceId: string) => {
+    realTimeClient.connect()
+    const channel = `workspace:${workspaceId}`
+    realTimeClient.subscribe(channel)
+
+    const unsubEvents = realTimeClient.onEvent((event) => {
+      get().handleRealTimeEvent(event)
+    })
+
+    const unsubStatus = realTimeClient.onStatusChange((status) => {
+      if (status === "connected") {
+        const active = get().activeProject
+        if (active) {
+          get().fetchBoard(active.id)
+        }
+      }
+    })
+
+    return () => {
+      unsubEvents()
+      unsubStatus()
+      realTimeClient.unsubscribe(channel)
+    }
+  },
 }))

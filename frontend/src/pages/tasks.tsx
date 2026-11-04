@@ -11,6 +11,7 @@ import { useProjectStore } from "@/stores/project-store"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { KanbanBoard } from "@/components/kanban/board"
+import { RealTimeStatusPill } from "@/components/common/realtime-status-pill"
 
 export function TasksPage() {
   const { projectId } = useParams<{ projectId?: string }>()
@@ -125,6 +126,7 @@ export function TasksPage() {
 
         {/* Project Selector & Actions */}
         <div className="flex items-center gap-2">
+          <RealTimeStatusPill />
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-muted-foreground hidden md:inline">Project:</span>
             <select
