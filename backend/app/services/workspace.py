@@ -8,6 +8,7 @@ from app.models.user import User
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
 from app.schemas.workspace import WorkspaceCreate, WorkspaceUpdate
+from app.services.outbox import outbox_service
 
 
 class WorkspaceService:
@@ -334,6 +335,20 @@ class WorkspaceService:
             },
         )
         db.add(audit)
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace.id,
+            event_type="workspace.ownership_transferred",
+            entity_type="workspace",
+            entity_id=workspace.id,
+            actor_id=actor.id,
+            payload={
+                "previous_owner_id": str(current_owner_id),
+                "new_owner_id": str(new_owner_id),
+            },
+        )
 
         await db.commit()
 

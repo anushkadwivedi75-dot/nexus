@@ -11,6 +11,7 @@ from app.models.user import User
 from app.models.workspace import Workspace
 from app.models.workspace_invitation import WorkspaceInvitation
 from app.models.workspace_member import WorkspaceMember
+from app.services.outbox import outbox_service
 
 
 class WorkspaceInvitationService:
@@ -301,6 +302,21 @@ class WorkspaceInvitationService:
             },
         )
         db.add(audit)
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace.id,
+            event_type="workspace.invitation_accepted",
+            entity_type="invitation",
+            entity_id=invitation.id,
+            actor_id=user.id,
+            payload={
+                "invitation_id": str(invitation.id),
+                "user_id": str(user.id),
+                "role": invitation.role,
+            },
+        )
 
         await db.commit()
         await db.refresh(workspace)

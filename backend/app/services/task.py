@@ -15,6 +15,7 @@ from app.models.user import User
 from app.models.workspace_member import WorkspaceMember
 from app.schemas.task import TaskCreate, TaskMove, TaskUpdate
 from app.services.fractional_index import fractional_index_service
+from app.services.outbox import outbox_service
 from app.services.project import project_service
 
 
@@ -131,6 +132,28 @@ class TaskService:
                 tag_id=tag.id,
             )
             db.add(tt)
+
+        # 7. Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace_id,
+            event_type="task.created",
+            entity_type="task",
+            entity_id=task.id,
+            actor_id=creator.id,
+            payload={
+                "task_id": str(task.id),
+                "project_id": str(project.id),
+                "status_id": str(task.status_id),
+                "task_number": task.task_number,
+                "task_key": f"{project.key}-{task.task_number}",
+                "title": task.title,
+                "priority": task.priority,
+                "rank": task.rank,
+                "version": task.version,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+            },
+        )
 
         await db.commit()
         return await cls.get_task_details(db, workspace_id, project.id, task.id, project_key=project.key)
@@ -308,6 +331,26 @@ class TaskService:
                 db.add(TaskTag(workspace_id=workspace_id, task_id=task.id, tag_id=tag.id))
 
         task.version += 1
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace_id,
+            event_type="task.updated",
+            entity_type="task",
+            entity_id=task.id,
+            payload={
+                "task_id": str(task.id),
+                "project_id": str(project_id),
+                "status_id": str(task.status_id),
+                "title": task.title,
+                "priority": task.priority,
+                "rank": task.rank,
+                "version": task.version,
+                "due_date": task.due_date.isoformat() if task.due_date else None,
+            },
+        )
+
         await db.commit()
         return await cls.get_task_details(db, workspace_id, project_id, task.id)
 
@@ -337,6 +380,20 @@ class TaskService:
             raise HTTPException(status_code=404, detail="Task not found.")
 
         task.deleted_at = datetime.now(timezone.utc)
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace_id,
+            event_type="task.deleted",
+            entity_type="task",
+            entity_id=task.id,
+            payload={
+                "task_id": str(task.id),
+                "project_id": str(project_id),
+            },
+        )
+
         await db.commit()
         return True
 
@@ -474,18 +531,35 @@ class TaskService:
                     })
 
             # Consolidated outbox event for rebalance
-            outbox = OutboxEvent(
-                id=uuid.uuid4(),
+            await outbox_service.create_event(
+                db=db,
                 workspace_id=workspace_id,
-                channel=f"workspace:{workspace_id}",
                 event_type="column.rebalanced",
+                entity_type="task_status",
+                entity_id=dest_status_id,
                 payload={
                     "project_id": str(project.id),
                     "status_id": str(dest_status_id),
                     "tasks": changed_payload,
                 },
             )
-            db.add(outbox)
+
+        # Transactional Outbox Event for task movement
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace_id,
+            event_type="task.moved",
+            entity_type="task",
+            entity_id=task.id,
+            payload={
+                "task_id": str(task.id),
+                "project_id": str(project.id),
+                "source_status_id": str(source_status_id),
+                "destination_status_id": str(dest_status_id),
+                "rank": task.rank,
+                "version": task.version,
+            },
+        )
 
         await db.commit()
         return await cls.get_task_details(db, workspace_id, project.id, task.id, project_key=project.key)

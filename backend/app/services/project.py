@@ -12,6 +12,7 @@ from app.models.task_status import TaskStatus
 from app.models.user import User
 from app.models.workspace_member import WorkspaceMember
 from app.schemas.project import ProjectCreate, ProjectUpdate
+from app.services.outbox import outbox_service
 
 DEFAULT_STATUSES = [
     {"name": "Backlog", "rank": 1000.0, "color_hex": "#94A3B8", "is_completed_state": False},
@@ -119,6 +120,23 @@ class ProjectService:
             },
         )
         db.add(audit)
+
+        # 7. Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace_id,
+            event_type="project.created",
+            entity_type="project",
+            entity_id=project.id,
+            actor_id=creator.id,
+            payload={
+                "project_id": str(project.id),
+                "name": project.name,
+                "key": project.key,
+                "is_private": project.is_private,
+                "lead_id": str(project.lead_id) if project.lead_id else None,
+            },
+        )
 
         await db.commit()
         await db.refresh(project)
@@ -247,6 +265,24 @@ class ProjectService:
                 )
             project.lead_id = data.lead_id
 
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=project.workspace_id,
+            event_type="project.updated",
+            entity_type="project",
+            entity_id=project.id,
+            actor_id=actor.id,
+            payload={
+                "project_id": str(project.id),
+                "name": project.name,
+                "key": project.key,
+                "is_private": project.is_private,
+                "status": project.status,
+                "lead_id": str(project.lead_id) if project.lead_id else None,
+            },
+        )
+
         await db.commit()
         await db.refresh(project)
         return project
@@ -274,6 +310,20 @@ class ProjectService:
             update(TaskStatus)
             .where(TaskStatus.project_id == project.id, TaskStatus.deleted_at.is_(None))
             .values(deleted_at=now)
+        )
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=project.workspace_id,
+            event_type="project.deleted",
+            entity_type="project",
+            entity_id=project.id,
+            actor_id=actor.id,
+            payload={
+                "project_id": str(project.id),
+                "key": project.key,
+            },
         )
 
         await db.commit()

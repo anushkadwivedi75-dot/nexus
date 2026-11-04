@@ -8,6 +8,7 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.models.workspace import Workspace
 from app.models.workspace_member import WorkspaceMember
+from app.services.outbox import outbox_service
 
 
 class WorkspaceMemberService:
@@ -126,6 +127,21 @@ class WorkspaceMemberService:
         )
         db.add(audit)
 
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace.id,
+            event_type="workspace.member_updated",
+            entity_type="workspace_member",
+            entity_id=target.id,
+            actor_id=actor.id,
+            payload={
+                "target_user_id": str(target_user_id),
+                "old_role": old_role,
+                "new_role": clean_role,
+            },
+        )
+
         await db.commit()
         await db.refresh(target)
         return target
@@ -200,6 +216,21 @@ class WorkspaceMemberService:
             },
         )
         db.add(audit)
+
+        # Transactional Outbox Event
+        await outbox_service.create_event(
+            db=db,
+            workspace_id=workspace.id,
+            event_type="workspace.member_removed",
+            entity_type="workspace_member",
+            entity_id=target.id,
+            actor_id=actor.id,
+            payload={
+                "target_user_id": str(target_user_id),
+                "role": target.role,
+                "is_self_removal": is_self_removal,
+            },
+        )
 
         await db.delete(target)
         await db.commit()

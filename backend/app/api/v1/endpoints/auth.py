@@ -6,9 +6,11 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import settings
 from app.core.database import get_db
+from app.core.redis import redis_client
 from app.core.security import get_current_user, verify_csrf_and_origin
 from app.models.refresh_token import RefreshToken
 from app.models.user import User
+from app.models.workspace_member import WorkspaceMember
 from app.schemas.auth import (
     APIResponse,
     AuthResponse,
@@ -254,3 +256,35 @@ async def revoke_all_sessions(
     revoked_count = await auth_service.revoke_all_sessions(db, current_user.id)
     _clear_refresh_cookie(response)
     return APIResponse(data={"message": "All sessions revoked", "count": revoked_count})
+
+
+@router.post(
+    "/ws-ticket",
+    response_model=APIResponse[dict],
+    status_code=status.HTTP_200_OK,
+    summary="Generate WebSocket Connection Ticket",
+)
+async def generate_ws_ticket(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Generates a single-use 60-second UUID ticket for WebSocket handshake authentication.
+    Pre-populates the user's active workspace memberships in Redis.
+    """
+    # 1. Fetch user's active workspace IDs
+    stmt = select(WorkspaceMember.workspace_id).where(WorkspaceMember.user_id == current_user.id)
+    res = await db.execute(stmt)
+    workspace_ids = [str(wid) for wid in res.scalars().all()]
+
+    # 2. Store ticket payload in Redis with 60-second TTL
+    ticket_uuid = str(uuid.uuid4())
+    import json
+    ticket_payload = {
+        "user_id": str(current_user.id),
+        "workspaces": workspace_ids,
+    }
+    await redis_client.set(f"ws_ticket:{ticket_uuid}", json.dumps(ticket_payload), ex=60)
+
+    return APIResponse(data={"ticket": ticket_uuid, "expires_in": 60})
+
