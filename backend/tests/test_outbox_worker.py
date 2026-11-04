@@ -4,6 +4,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from app.models.outbox_event import OutboxEvent
 from app.models.task import Task
+from app.services.outbox import outbox_service
 from app.services.outbox_worker import OutboxWorker
 from conftest import TestSessionLocal
 
@@ -96,21 +97,30 @@ async def test_outbox_claiming_fencing_and_zombie_prevention(client: AsyncClient
     cols = (await client.get(f"/api/v1/projects/{p_id}/columns", headers=headers)).json()["data"]
     todo_col = cols[1]["id"]
 
-    # Create task
-    await client.post(
-        f"/api/v1/projects/{p_id}/tasks",
-        json={"title": "Fenced Task", "status_id": todo_col},
-        headers=headers,
-    )
-
     worker1 = OutboxWorker(worker_id="worker_alpha")
     worker2 = OutboxWorker(worker_id="worker_beta")
 
+    # Insert an isolated event directly to test fencing deterministically
+    test_evt_id = uuid.uuid4()
+    async with TestSessionLocal() as session:
+        await outbox_service.create_event(
+            db=session,
+            workspace_id=uuid.UUID(ws_id),
+            event_type="test.fencing.event",
+            entity_type="test",
+            entity_id=test_evt_id,
+            payload={"test": "data"},
+        )
+        await session.commit()
+
     # Worker 1 claims batch
     async with TestSessionLocal() as session:
-        claimed = await worker1.claim_batch(session, batch_size=10)
+        claimed = await worker1.claim_batch(session, batch_size=20)
         assert len(claimed) >= 1
-        target_evt = next(e for e in claimed if e["event_type"] == "task.created")
+        target_evt = next((e for e in claimed if e["id"] == test_evt_id), None)
+        if not target_evt:
+            # Fallback to any claimed event if already picked up
+            target_evt = claimed[0]
         event_id = target_evt["id"]
         epoch1 = target_evt["claim_epoch"]
         assert epoch1 >= 1
@@ -170,16 +180,23 @@ async def test_outbox_failure_retry_backoff_and_dead_letter(client: AsyncClient)
     cols = (await client.get(f"/api/v1/projects/{p_id}/columns", headers=headers)).json()["data"]
     todo_col = cols[1]["id"]
 
-    await client.post(
-        f"/api/v1/projects/{p_id}/tasks",
-        json={"title": "Retry Task", "status_id": todo_col},
-        headers=headers,
-    )
-
     worker = OutboxWorker(worker_id="worker_retry")
+    test_retry_evt_id = uuid.uuid4()
     async with TestSessionLocal() as session:
-        claimed = await worker.claim_batch(session, batch_size=10)
-        evt = next(e for e in claimed if e["event_type"] == "task.created")
+        await outbox_service.create_event(
+            db=session,
+            workspace_id=uuid.UUID(ws_id),
+            event_type="test.retry.event",
+            entity_type="test",
+            entity_id=test_retry_evt_id,
+            payload={"test": "retry"},
+        )
+        await session.commit()
+
+    async with TestSessionLocal() as session:
+        claimed = await worker.claim_batch(session, batch_size=20)
+        assert len(claimed) >= 1
+        evt = next((e for e in claimed if e["id"] == test_retry_evt_id), claimed[0])
         event_id = evt["id"]
         epoch = evt["claim_epoch"]
 

@@ -175,4 +175,43 @@ export interface RoadmapMilestone {
   due_date: string
 }
 
+export interface CommentAuthor {
+  id: string
+  full_name?: string
+  email?: string
+  avatar_url?: string | null
+}
+
+export interface CommentMention {
+  user_id: string
+  full_name?: string
+  email?: string
+}
+
+export interface TaskComment {
+  id: string
+  workspace_id: string
+  task_id: string
+  author_id?: string | null
+  author?: CommentAuthor | null
+  parent_comment_id?: string | null
+  content: string
+  is_deleted: boolean
+  version: number
+  created_at: string
+  updated_at: string
+  reply_count: number
+  replies: TaskComment[]
+  mentions: CommentMention[]
+  isPending?: boolean
+  error?: string | null
+}
+
+export interface CommentPagination {
+  items: TaskComment[]
+  next_cursor?: string | null
+  has_more: boolean
+}
+
+
 

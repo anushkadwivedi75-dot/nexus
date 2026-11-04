@@ -16,6 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { TaskDiscussion } from "@/components/tasks/task-discussion"
 
 interface TaskModalProps {
   task: Task | null
@@ -89,7 +90,7 @@ export const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-2xl bg-card border-border/80">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-card border-border/80 p-6">
         <DialogHeader className="border-b border-border/40 pb-3">
           <div className="flex items-center justify-between pr-6">
             <div className="flex items-center gap-2">
@@ -203,6 +204,9 @@ export const TaskModal: React.FC<TaskModalProps> = ({
             </div>
           )}
         </div>
+
+        {/* Task Discussion & Activity */}
+        <TaskDiscussion taskId={task.id} projectKey={projectKey} taskNumber={task.task_number} />
 
         <DialogFooter className="flex items-center justify-between border-t border-border/40 pt-3">
           <span className="text-[10px] text-muted-foreground">

@@ -14,6 +14,7 @@ from app.models.task_assignee import TaskAssignee
 from app.models.tag import Tag
 from app.models.task_tag import TaskTag
 from app.models.comment import Comment
+from app.models.comment_mention import CommentMention
 from app.models.notification import Notification
 from app.models.activity_log import ActivityLog
 from app.models.audit_log import AuditLog
@@ -34,6 +35,7 @@ __all__ = [
     "Tag",
     "TaskTag",
     "Comment",
+    "CommentMention",
     "Notification",
     "ActivityLog",
     "AuditLog",
