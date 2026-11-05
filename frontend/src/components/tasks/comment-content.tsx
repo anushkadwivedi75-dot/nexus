@@ -27,7 +27,7 @@ export const CommentContent: React.FC<CommentContentProps> = ({
     // 3. Inline code: `code`
     // 4. Bold: **text**
     // 5. Italic: *text*
-    const tokenRegex = /(@\[([^\]]+)\]\([a-f0-9\-]{36}\)|@([a-zA-Z0-9_.-]+)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*)/g
+    const tokenRegex = /(@\[([^\]]+)\]\([a-f0-9-]{36}\)|@([a-zA-Z0-9_.-]+)|`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*)/g
 
     const elements: React.ReactNode[] = []
     let lastIndex = 0

@@ -1,97 +1,218 @@
-import { CheckCircle2, AtSign } from "lucide-react"
+import { useEffect } from "react"
+import { useNavigate } from "react-router-dom"
+import {
+  CheckCheck,
+  RefreshCw,
+  Inbox,
+  AtSign,
+  UserCheck,
+  Archive,
+  Layers,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-
-const mockNotifications = [
-  {
-    id: "notif-1",
-    author: "Sarah Chen",
-    action: "mentioned you in a comment on",
-    target: "CORE-104 (Deterministic two-column status locks)",
-    time: "12m ago",
-    unread: true,
-  },
-  {
-    id: "notif-2",
-    author: "Marcus Brody",
-    action: "assigned you to",
-    target: "AUTH-89 (Verify crash-safe refresh grace-chain)",
-    time: "45m ago",
-    unread: true,
-  },
-  {
-    id: "notif-3",
-    author: "Elena Rostova",
-    action: "approved your review on",
-    target: "UI-15 (Collapsible left sidebar)",
-    time: "2h ago",
-    unread: true,
-  },
-  {
-    id: "notif-4",
-    author: "Nexus System",
-    action: "successfully migrated workspace database schema to",
-    target: "v1.3.1 (Engine Constraints)",
-    time: "1d ago",
-    unread: false,
-  },
-]
+import {
+  useNotificationStore,
+  type NotificationTab,
+} from "@/stores/notification-store"
+import { NotificationItem } from "@/components/notifications/notification-item"
 
 export function InboxPage() {
+  const navigate = useNavigate()
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    hasMore,
+    activeTab,
+    setActiveTab,
+    fetchNotifications,
+    fetchUnreadCount,
+    markAsRead,
+    markAsUnread,
+    markAllAsRead,
+    archiveNotification,
+    initRealtimeListener,
+  } = useNotificationStore()
+
+  useEffect(() => {
+    fetchUnreadCount()
+    fetchNotifications({ reset: true })
+    const cleanup = initRealtimeListener()
+    return cleanup
+  }, [fetchUnreadCount, fetchNotifications, initRealtimeListener])
+
+  const tabs: { id: NotificationTab; label: string; icon: any; count?: number }[] = [
+    { id: "all", label: "All", icon: Layers },
+    { id: "unread", label: "Unread", icon: Inbox, count: unreadCount },
+    { id: "mentions", label: "Mentions", icon: AtSign },
+    { id: "assignments", label: "Assignments", icon: UserCheck },
+    { id: "archived", label: "Archived", icon: Archive },
+  ]
+
+  const handleItemClick = (notif: (typeof notifications)[0]) => {
+    if (!notif.is_read) {
+      markAsRead(notif.id)
+    }
+    if (notif.payload?.task_id) {
+      navigate("/tasks")
+    }
+  }
+
+  const getEmptyMessage = () => {
+    switch (activeTab) {
+      case "unread":
+        return {
+          title: "Zero unread notifications",
+          desc: "You've reviewed all incoming notifications. Great job!",
+        }
+      case "mentions":
+        return {
+          title: "No mentions yet",
+          desc: "When teammates @mention you in comments, they will appear here.",
+        }
+      case "assignments":
+        return {
+          title: "No assignments",
+          desc: "Tasks assigned to you will be tracked here.",
+        }
+      case "archived":
+        return {
+          title: "Archive is empty",
+          desc: "Notifications you archive will be kept here for reference.",
+        }
+      default:
+        return {
+          title: "Inbox Zero",
+          desc: "No notifications to show. You are completely up to date.",
+        }
+    }
+  }
+
+  const emptyInfo = getEmptyMessage()
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-4xl mx-auto pb-12">
+      {/* Top Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border/50 pb-5">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            Notification Inbox
-          </h1>
-          <p className="text-xs text-muted-foreground">
-            Mentions, assignments, and real-time project alerts
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              Inbox
+            </h1>
+            {unreadCount > 0 && (
+              <span className="rounded-full bg-primary/15 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                {unreadCount} unread
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Real-time mentions, assignments, and workspace activity alerts
           </p>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="text-xs">
-            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
-            Mark all read
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isLoading}
+            onClick={() => {
+              fetchUnreadCount()
+              fetchNotifications({ reset: true })
+            }}
+            className="text-xs h-8 px-2.5"
+            title="Refresh inbox"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoading ? "animate-spin" : ""}`} />
+            Refresh
           </Button>
+
+          {unreadCount > 0 && (
+            <Button
+              variant="subtle"
+              size="sm"
+              onClick={() => markAllAsRead()}
+              className="text-xs h-8 px-3"
+            >
+              <CheckCheck className="h-3.5 w-3.5 mr-1.5 text-primary" />
+              Mark all read
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="space-y-2">
-        {mockNotifications.map((n) => (
-          <Card
-            key={n.id}
-            className={`border-border/60 transition-colors ${
-              n.unread ? "bg-card/90 border-border" : "bg-card/40 opacity-75"
-            }`}
-          >
-            <CardContent className="p-3.5 flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3">
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary mt-0.5">
-                  {n.author.includes("System") ? (
-                    <CheckCircle2 className="h-3.5 w-3.5" />
-                  ) : (
-                    <AtSign className="h-3.5 w-3.5" />
-                  )}
-                </div>
-
-                <div className="flex flex-col space-y-0.5">
-                  <p className="text-xs text-foreground">
-                    <strong className="font-semibold">{n.author}</strong>{" "}
-                    <span className="text-muted-foreground">{n.action}</span>{" "}
-                    <span className="font-medium text-foreground">{n.target}</span>
-                  </p>
-                  <span className="text-[10px] text-muted-foreground">{n.time}</span>
-                </div>
-              </div>
-
-              {n.unread && (
-                <span className="h-2 w-2 rounded-full bg-primary shrink-0 mt-1.5" />
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-1.5 border-b border-border/40 pb-2 overflow-x-auto select-none">
+        {tabs.map((tab) => {
+          const Icon = tab.icon
+          const isActive = activeTab === tab.id
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                isActive
+                  ? "bg-primary/15 text-primary shadow-2xs font-semibold"
+                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+              {typeof tab.count === "number" && tab.count > 0 && (
+                <span className="rounded-full bg-primary text-primary-foreground text-[10px] font-bold px-1.5 py-0.2">
+                  {tab.count}
+                </span>
               )}
-            </CardContent>
-          </Card>
-        ))}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Notifications List */}
+      <div className="space-y-2">
+        {notifications.length > 0 ? (
+          notifications.map((notif) => (
+            <NotificationItem
+              key={notif.id}
+              notification={notif}
+              onMarkRead={markAsRead}
+              onMarkUnread={markAsUnread}
+              onArchive={archiveNotification}
+              onClick={() => handleItemClick(notif)}
+            />
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-border/50 bg-card/20 p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/60 text-muted-foreground mb-3 shadow-inner">
+              <Inbox className="h-6 w-6" />
+            </div>
+            <h3 className="text-sm font-semibold text-foreground">{emptyInfo.title}</h3>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              {emptyInfo.desc}
+            </p>
+          </div>
+        )}
+
+        {/* Load More Pagination */}
+        {hasMore && (
+          <div className="flex justify-center pt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isLoading}
+              onClick={() => fetchNotifications()}
+              className="text-xs px-4"
+            >
+              {isLoading ? (
+                <>
+                  <RefreshCw className="h-3 w-3 mr-1.5 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                "Load more notifications"
+              )}
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   )

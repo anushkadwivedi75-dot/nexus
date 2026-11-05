@@ -1,5 +1,16 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, comments, health, invitations, projects, tasks, users, workspaces, ws
+from app.api.v1.endpoints import (
+    auth,
+    comments,
+    health,
+    invitations,
+    notifications,
+    projects,
+    tasks,
+    users,
+    workspaces,
+    ws,
+)
 
 api_router = APIRouter()
 api_router.include_router(health.router, tags=["Health"])
@@ -10,4 +21,5 @@ api_router.include_router(invitations.router, prefix="/invitations", tags=["Invi
 api_router.include_router(projects.router, tags=["Projects"])
 api_router.include_router(tasks.router, tags=["Tasks"])
 api_router.include_router(comments.router, tags=["Comments"])
+api_router.include_router(notifications.router, tags=["Notifications"])
 api_router.include_router(ws.router, tags=["WebSocket"])

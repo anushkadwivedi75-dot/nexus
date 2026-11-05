@@ -421,7 +421,7 @@ class NotificationService:
         db: AsyncSession,
         user_id: uuid.UUID,
         notification_id: uuid.UUID,
-    ) -> bool:
+    ) -> NotificationResponse:
         """Archives a notification, removing it from default inbox queries."""
         stmt = (
             select(Notification)
@@ -453,5 +453,29 @@ class NotificationService:
                 },
             )
             await db.commit()
+            await db.refresh(notif)
 
-        return True
+        actor_info = None
+        if notif.actor_id:
+            u_stmt = select(User).where(User.id == notif.actor_id)
+            u_res = await db.execute(u_stmt)
+            u = u_res.scalars().first()
+            if u:
+                actor_info = NotificationActor(id=u.id, full_name=u.full_name, email=u.email, avatar_url=u.avatar_url)
+
+        return NotificationResponse(
+            id=notif.id,
+            workspace_id=notif.workspace_id,
+            recipient_id=notif.recipient_id,
+            actor_id=notif.actor_id,
+            actor=actor_info,
+            action_type=notif.action_type,
+            entity_type=notif.entity_type,
+            entity_id=notif.entity_id,
+            message=notif.message,
+            payload=notif.payload or {},
+            is_read=notif.is_read,
+            read_at=notif.read_at,
+            archived_at=notif.archived_at,
+            created_at=notif.created_at,
+        )

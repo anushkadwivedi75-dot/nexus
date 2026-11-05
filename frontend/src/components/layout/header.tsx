@@ -2,7 +2,6 @@ import { useLocation } from "react-router-dom"
 import {
   Menu,
   Search,
-  Bell,
   Command as CommandIcon,
   Plus,
 } from "lucide-react"
@@ -22,6 +21,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Badge } from "@/components/ui/badge"
 import { currentUser } from "@/data/mock-data"
 import { RealTimeStatusPill } from "@/components/common/realtime-status-pill"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 
 const pageTitles: Record<string, { title: string; category: string }> = {
   "/": { title: "Overview", category: "Workspace" },
@@ -120,26 +120,8 @@ export function Header() {
           </Tooltip>
         </TooltipProvider>
 
-        {/* Notifications Popover Trigger */}
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                className="relative text-muted-foreground hover:text-foreground"
-                aria-label="Notifications"
-              >
-                <Bell className="h-4 w-4" />
-                <span className="absolute right-1.5 top-1.5 flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-                </span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>3 unread notifications</TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        {/* Interactive Notifications Bell Popover */}
+        <NotificationBell />
 
         {/* Profile Avatar Menu */}
         <DropdownMenu>

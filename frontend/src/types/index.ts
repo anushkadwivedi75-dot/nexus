@@ -213,5 +213,41 @@ export interface CommentPagination {
   has_more: boolean
 }
 
+export interface NotificationActor {
+  id: string
+  full_name?: string | null
+  email?: string
+  avatar_url?: string | null
+}
+
+export interface InAppNotification {
+  id: string
+  workspace_id: string
+  recipient_id: string
+  actor_id?: string | null
+  actor?: NotificationActor | null
+  action_type: string
+  entity_type: string
+  entity_id: string
+  message: string
+  payload: Record<string, any>
+  is_read: boolean
+  read_at?: string | null
+  archived_at?: string | null
+  created_at: string
+}
+
+export interface NotificationPagination {
+  items: InAppNotification[]
+  next_cursor?: string | null
+  has_more: boolean
+  unread_count: number
+}
+
+export interface NotificationUnreadCount {
+  unread_count: number
+}
+
+
 
 

@@ -231,7 +231,7 @@ class CommentService:
 
         # Generate mention notifications
         actor_name = author.full_name or author.email
-        task_label = f"{project.prefix}-{task.task_number}"
+        task_label = f"{project.key}-{task.task_number}"
         for uid, _ in mentions:
             await NotificationService.create_notification(
                 db=db,
