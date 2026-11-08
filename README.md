@@ -105,32 +105,35 @@ c:\PROJECTS\nexus\
 
 ---
 
-## 4. Docker Compose Infrastructure Services
+## 4. Production Deployment
 
-Start the PostgreSQL 16 and Redis 7 containers:
+To deploy the entire production stack (Nginx Gateway, Frontend SPA, Backend API, PostgreSQL 16, Redis 7):
 
-```bash
-# Start services in the background
-docker-compose up -d
+### One-Command Deployment:
+- **Linux / macOS:**
+  ```bash
+  chmod +x deploy.sh
+  ./deploy.sh
+  ```
+- **Windows PowerShell:**
+  ```powershell
+  .\deploy.ps1
+  ```
+- **Manual Docker Compose:**
+  ```bash
+  docker compose -f docker-compose.prod.yml up -d --build
+  ```
 
-# Verify container status and health
-docker-compose ps
+The complete production system will be operational at:
+- **Application Web UI:** `http://localhost`
+- **Backend API & Swagger Docs:** `http://localhost/api/v1/docs`
+- **Gateway Health Check:** `http://localhost/healthz`
 
-# Expected output:
-# NAME             IMAGE                STATUS
-# nexus_postgres   postgres:16-alpine   Up (healthy)
-# nexus_redis      redis:7-alpine       Up (healthy)
-
-# Stop services
-docker-compose down
-
-# Stop and wipe persistent volume data (fresh start)
-docker-compose down -v
-```
+For full production architecture, SSL configuration, database role separation, and backup policies, refer to [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
 
 ---
 
-## 5. Backend Setup & Startup
+## 5. Development Setup & Startup
 
 1. Create and activate a Python 3.12+ virtual environment:
    ```bash
@@ -232,6 +235,8 @@ python test_live_server.py
 | Issue | Cause | Solution |
 | :--- | :--- | :--- |
 | `failed to connect to docker API` | Docker Desktop is stopped | Open Docker Desktop and ensure the engine status icon is green. |
+| `HTTP 502 Bad Gateway on Sign In` | Backend server not running or port 8000 conflicting | Ensure backend is running (`uvicorn app.main:app`) and no other container (`docker ps`) occupies port 8000. |
+| `npm error enoent package.json` | Running `npm` inside `backend/` | Navigate to `frontend/` (`cd frontend`) before running npm commands. |
 | `Port 5432 already in use` | Local PostgreSQL instance conflicting | Stop local PostgreSQL service (`net stop postgresql-x64-16`) or change `POSTGRES_PORT` in `.env`. |
 | `Port 6379 already in use` | Local Redis service conflicting | Change `REDIS_PORT` in `.env` or stop the local Redis service. |
 | `alembic: connection refused` | Database container not healthy | Run `docker-compose ps` and wait until `nexus_postgres` reports `(healthy)`. |

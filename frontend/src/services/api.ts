@@ -55,13 +55,31 @@ class ApiClient {
       headers.set('Authorization', `Bearer ${token}`);
     }
 
+    const controller = new AbortController();
+    const timeoutMs = (options as any).timeout || 15000;
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     const fetchConfig: RequestInit = {
       ...options,
       headers,
       credentials: 'include', // Ensures HTTP-only refresh cookies are sent
+      signal: options.signal || controller.signal,
     };
 
-    let response = await fetch(url, fetchConfig);
+    let response: Response;
+    try {
+      response = await fetch(url, fetchConfig);
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        const timeoutError = new Error('Request timed out. Please verify that the backend server is reachable.') as any;
+        timeoutError.status = 504;
+        throw timeoutError;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     // If 401 Unauthorized and not already authenticating/refreshing
     if (
@@ -93,7 +111,13 @@ class ApiClient {
     }
 
     if (!response.ok) {
-      const errorMsg = data?.error?.message || data?.detail || `HTTP Error ${response.status}`;
+      const errorMsg =
+        data?.error?.message ||
+        data?.detail ||
+        (typeof data?.message === 'string' && data.message.length > 0 ? data.message : null) ||
+        (response.status === 502
+          ? 'Backend service unreachable (502 Bad Gateway). Please verify that the backend is running on port 8000.'
+          : `HTTP Error ${response.status}`);
       const error = new Error(errorMsg) as any;
       error.status = response.status;
       error.data = data;

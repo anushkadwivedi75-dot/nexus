@@ -1,0 +1,126 @@
+# ==============================================================================
+# Nexus Production Docker Compose Topology (Phase 9)
+# Reference: NEXUS_SYSTEM_BLUEPRINT_PHASE_0_v1.3.1.md Section 18 & 19
+# ==============================================================================
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: nexus_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-nexus_migrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-migrator_dev_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-roles.sql:/docker-entrypoint-initdb.d/01-init-roles.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nexus_migrator} -d ${POSTGRES_DB:-nexus_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - nexus_internal
+
+  redis:
+    image: redis:7-alpine
+    container_name: nexus_redis_prod
+    restart: always
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-dev_redis_password}", "--appendonly", "yes"]
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-dev_redis_password}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-dev_redis_password} ping | grep -q PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - nexus_internal
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: nexus_backend_prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      APP_NAME: "Nexus API"
+      APP_ENV: production
+      DEBUG: "False"
+      API_V1_STR: "/api/v1"
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-nexus_dev}
+      POSTGRES_USER: ${POSTGRES_USER:-nexus_migrator}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-migrator_dev_password}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nexus_migrator}:${POSTGRES_PASSWORD:-migrator_dev_password}@postgres:5432/${POSTGRES_DB:-nexus_dev}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-dev_redis_password}
+      REDIS_URL: redis://:${REDIS_PASSWORD:-dev_redis_password}@redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:-nexus_dev_super_secret_jwt_signing_key_at_least_32_bytes_long_12345}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+      CORS_ORIGINS: '["http://localhost","http://localhost:80","http://127.0.0.1","http://127.0.0.1:80"]'
+      RUN_MIGRATIONS: "true"
+      WEB_CONCURRENCY: 2
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8000/api/v1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - nexus_internal
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: "/api/v1"
+    container_name: nexus_frontend_prod
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:80/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - nexus_internal
+
+  gateway:
+    build:
+      context: ./docker/nginx
+      dockerfile: Dockerfile
+    container_name: nexus_gateway_prod
+    restart: always
+    ports:
+      - "${PORT:-80}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - nexus_internal
+
+networks:
+  nexus_internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
